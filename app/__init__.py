@@ -1,0 +1,1 @@
+"""SpeakSafe HR application package."""
