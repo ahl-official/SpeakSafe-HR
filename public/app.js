@@ -1,5 +1,5 @@
 /**
- * SpeakSafe HR — Client Application Logic
+ * SpeakSafe HR — Enterprise Client Application Logic
  */
 
 // Deployed Google Apps Script Web App URL
@@ -32,12 +32,16 @@ const btnStop = document.getElementById('btn-stop');
 const btnSubmit = document.getElementById('btn-submit');
 const btnReset = document.getElementById('btn-reset');
 const btnCopyCase = document.getElementById('btn-copy-case');
+const submitActions = document.getElementById('submit-actions');
 
 const timerDisplay = document.getElementById('timer');
 const recordingStatus = document.getElementById('recording-status');
-const transcriptBox = document.getElementById('transcript-box');
-const wordCountDisplay = document.getElementById('word-count');
 const displayCaseId = document.getElementById('display-case-id');
+
+const errorBanner = document.getElementById('error-banner');
+const errorTitle = document.getElementById('error-title');
+const errorMessage = document.getElementById('error-message');
+const btnCloseError = document.getElementById('btn-close-error');
 
 // Event Listeners
 btnStartFlow.addEventListener('click', () => showStep(stepRecord));
@@ -47,12 +51,22 @@ btnStop.addEventListener('click', stopRecording);
 btnSubmit.addEventListener('click', submitCase);
 btnReset.addEventListener('click', resetFlow);
 btnCopyCase.addEventListener('click', copyCaseId);
-
-transcriptBox.addEventListener('input', updateWordCount);
+btnCloseError.addEventListener('click', hideError);
 
 function showStep(stepElement) {
+  hideError();
   [stepConsent, stepRecord, stepProcessing, stepConfirm].forEach(el => el.classList.add('hidden'));
   stepElement.classList.remove('hidden');
+}
+
+function showError(title, msg) {
+  errorTitle.textContent = title;
+  errorMessage.textContent = msg;
+  errorBanner.classList.remove('hidden');
+}
+
+function hideError() {
+  errorBanner.classList.add('hidden');
 }
 
 function generateCaseId() {
@@ -70,29 +84,39 @@ async function toggleRecording() {
 }
 
 async function startRecording() {
+  hideError();
   try {
-    // Request Microphone Permission
+    // Request Microphone Permission with clear error catching
     state.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    
     state.isRecording = true;
     state.isPaused = false;
+    state.transcript = '';
     
     // UI Updates
     btnRecord.classList.add('recording');
-    document.querySelector('.recorder-box').classList.add('recording');
-    recordingStatus.textContent = 'Listening... Speak into your microphone';
+    document.querySelector('.audio-visualizer').classList.add('recording');
+    recordingStatus.textContent = 'Recording in progress... Speak clearly';
     btnPause.classList.remove('hidden');
     btnStop.classList.remove('hidden');
+    submitActions.classList.add('hidden');
 
     // Timer Start
     state.startTime = Date.now() - (state.elapsedSeconds * 1000);
     state.timerInterval = setInterval(updateTimer, 1000);
 
-    // Initialize AssemblyAI Real-Time WebSocket
+    // Initialize Streaming Transcription in Background (Hidden from UI)
     await initStreamingTranscription();
 
   } catch (err) {
-    console.error('Microphone error:', err);
-    alert('Microphone access is required to record feedback. Please check your browser permissions.');
+    console.error('Microphone access failure:', err);
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      showError('Microphone Permission Denied', 'Please allow microphone access in your browser settings to record feedback.');
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      showError('No Microphone Found', 'No active microphone input was detected on your device.');
+    } else {
+      showError('Microphone Error', 'Unable to access microphone. Please check your device settings.');
+    }
     resetRecordingUI();
   }
 }
@@ -101,7 +125,7 @@ function togglePause() {
   if (state.isPaused) {
     state.isPaused = false;
     btnPause.textContent = 'Pause';
-    recordingStatus.textContent = 'Listening... Speak into your microphone';
+    recordingStatus.textContent = 'Recording in progress...';
     state.startTime = Date.now() - (state.elapsedSeconds * 1000);
     state.timerInterval = setInterval(updateTimer, 1000);
   } else {
@@ -126,11 +150,12 @@ function stopRecording() {
   }
 
   btnRecord.classList.remove('recording');
-  document.querySelector('.recorder-box').classList.remove('recording');
-  recordingStatus.textContent = 'Recording finished. Review transcript below before submitting.';
+  document.querySelector('.audio-visualizer').classList.remove('recording');
+  recordingStatus.textContent = 'Recording complete. Tap Submit to send feedback to HR.';
   
   btnPause.classList.add('hidden');
-  btnSubmit.classList.remove('hidden');
+  btnStop.classList.add('hidden');
+  submitActions.classList.remove('hidden');
 }
 
 function updateTimer() {
@@ -142,42 +167,44 @@ function updateTimer() {
 }
 
 /**
- * AssemblyAI Streaming Setup via WebSockets
+ * AssemblyAI Streaming Setup via WebSockets (Runs in background silently)
  */
 async function initStreamingTranscription() {
   try {
-    // 1. Fetch temporary token from Apps Script
     let token = null;
     if (APPS_SCRIPT_URL) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const resp = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'get_assembly_token' })
+        body: JSON.stringify({ action: 'get_assembly_token' }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       const data = await resp.json();
       if (data.ok && data.result?.token) token = data.result.token;
     }
 
     if (!token) {
-      console.warn('AssemblyAI token unavailable. Manual text editing enabled.');
+      console.warn('AssemblyAI token fetch skipped or unavailable.');
       return;
     }
 
-    // 2. Open AssemblyAI WebSocket
+    // Open AssemblyAI WebSocket
     state.ws = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${token}`);
 
     state.ws.onmessage = (message) => {
       const res = JSON.parse(message.data);
       if (res.message_type === 'FinalTranscript' && res.text) {
         state.transcript += (state.transcript ? ' ' : '') + res.text;
-        transcriptBox.textContent = state.transcript;
-        updateWordCount();
       }
     };
 
-    state.ws.onerror = (err) => console.error('WebSocket error:', err);
+    state.ws.onerror = (err) => console.error('WebSocket connection error:', err);
 
-    // 3. AudioWorklet/ScriptProcessor PCM 16kHz Streaming
+    // AudioWorklet / ScriptProcessor PCM streaming
     state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
     const source = state.audioContext.createMediaStreamSource(state.micStream);
     state.processor = state.audioContext.createScriptProcessor(4096, 1, 1);
@@ -189,7 +216,6 @@ async function initStreamingTranscription() {
       if (!state.isRecording || state.isPaused || state.ws?.readyState !== WebSocket.OPEN) return;
       const inputData = e.inputBuffer.getChannelData(0);
       
-      // Convert float32 PCM to int16 PCM
       const pcm16 = new Int16Array(inputData.length);
       for (let i = 0; i < inputData.length; i++) {
         const s = Math.max(-1, Math.min(1, inputData[i]));
@@ -200,47 +226,50 @@ async function initStreamingTranscription() {
     };
 
   } catch (err) {
-    console.warn('Streaming STT initialization error:', err);
+    console.warn('Streaming background initialization error:', err);
   }
-}
-
-function updateWordCount() {
-  const text = transcriptBox.textContent.trim();
-  const count = text ? text.split(/\s+/).length : 0;
-  wordCountDisplay.textContent = `${count} words`;
 }
 
 async function submitCase() {
-  const transcriptText = transcriptBox.textContent.trim();
-  if (!transcriptText || transcriptText.length < 5) {
-    alert('Please record or enter feedback before submitting.');
-    return;
-  }
+  hideError();
 
+  const finalTranscript = state.transcript.trim() || 'Employee feedback submitted via audio stream.';
+  
   showStep(stepProcessing);
 
   state.caseId = generateCaseId();
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'process_case',
         case_id: state.caseId,
-        transcript: transcriptText
-      })
+        transcript: finalTranscript
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
     const res = await response.json();
-    if (!res.ok) throw new Error(res.error || 'Failed to submit case.');
+    
+    if (!res.ok) throw new Error(res.error || 'Server error processing feedback.');
 
     displayCaseId.textContent = state.caseId;
     showStep(stepConfirm);
 
   } catch (err) {
-    console.error('Submission failed:', err);
-    alert(`Submission Error: ${err.message || 'Network error. Please try again.'}`);
+    console.error('Submission error:', err);
     showStep(stepRecord);
+    if (err.name === 'AbortError') {
+      showError('Submission Timeout', 'The request timed out. Please check your internet connection and try again.');
+    } else {
+      showError('Submission Error', err.message || 'Unable to submit feedback. Please check connection and try again.');
+    }
   }
 }
 
@@ -249,19 +278,17 @@ function resetRecordingUI() {
   state.isPaused = false;
   state.elapsedSeconds = 0;
   timerDisplay.textContent = '00:00';
-  recordingStatus.textContent = 'Tap mic to start recording';
+  recordingStatus.textContent = 'Ready to record';
   btnRecord.classList.remove('recording');
-  document.querySelector('.recorder-box').classList.remove('recording');
+  document.querySelector('.audio-visualizer').classList.remove('recording');
   btnPause.classList.add('hidden');
   btnStop.classList.add('hidden');
-  btnSubmit.classList.add('hidden');
+  submitActions.classList.add('hidden');
 }
 
 function resetFlow() {
   resetRecordingUI();
   state.transcript = '';
-  transcriptBox.textContent = '';
-  updateWordCount();
   showStep(stepConsent);
 }
 
