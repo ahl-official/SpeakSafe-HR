@@ -1,14 +1,14 @@
 # 🛡️ SpeakSafe HR — 100% Free Mobile & Cloud Web Application
 
-SpeakSafe HR is an anonymous employee feedback system built for mobile devices, tablets, and desktops. Employees record voice feedback in their browser, which is transcribed in real-time, summarized neutrally by AI (GPT-4o-mini via OpenRouter), converted into a PDF report, and saved directly to a restricted Google Drive folder and Google Sheets log.
+SpeakSafe HR is an anonymous employee feedback application built for mobile phones, tablets, and desktop browsers. Employees record voice feedback in their browser, which is transcribed in real-time, summarized neutrally by AI (GPT-4o-mini via OpenRouter), converted into a PDF report, and saved directly to a restricted Google Drive folder and Google Sheets log.
 
 ---
 
-## 🌟 Architecture & Features
+## 🌟 Architecture & Data Flow
 
 ```text
 📱 Mobile / Tablet / Desktop Web App (Vercel — 100% Free, 0s Cold Start)
-   ↓ 🎙️ Real-time Speech-to-Text Streaming (AssemblyAI WebSockets)
+   ↓ 🎙️ Real-Time Speech-to-Text Streaming (AssemblyAI WebSockets)
 ⚡ Google Apps Script Engine (Free 24/7 Google Cloud)
    ↓ 🤖 Neutral HR Report Generation (OpenRouter / GPT-4o-mini)
 📁 Google Drive (Saves Transcript .txt & PDF Report)
@@ -23,35 +23,38 @@ SpeakSafe HR is an anonymous employee feedback system built for mobile devices, 
 
 ---
 
-## 🚀 Setup & Deployment Guide
+## 📂 Configured Google Resources
 
-### Step 1: Deploy Google Apps Script (Backend)
-
-1. Open [Google Drive](https://drive.google.com) logged into your dedicated HR Google account.
-2. Create a folder named `SpeakSafe HR - Restricted HR Records`. Copy its **Folder ID** from the browser address bar.
-3. Create a Google Sheet named `Employee Feedback Reports`. Copy its **Spreadsheet ID** from the address bar.
-4. Go to [script.google.com](https://script.google.com) and click **New project**.
-5. Copy all code from `apps_script/Code.gs` in this repository and paste it into the Apps Script editor.
-6. Replace `DEFAULT_CONFIG` values at the top of `Code.gs` with your `rootFolderId` and `spreadsheetId`.
-7. Run `setupSpeakSafe()` once inside the script editor.
-8. Run `setApiKeys()` to set your **AssemblyAI API Key** and **OpenRouter API Key**.
-9. Click **Deploy > New deployment**.
-   - **Type:** Web app
-   - **Execute as:** Me (HR Account)
-   - **Who has access:** Anyone
-10. Copy the generated **Web App URL** (e.g., `https://script.google.com/macros/s/.../exec`).
+- **Google Drive Root Folder:** `SpeakSafe HR - Restricted HR Records`
+  - **Drive ID:** `1Xy-dMHU_-MGnt1vU7rqS85e9-a4UywRb`
+  - **Subfolders:** `Transcripts` & `PDF Reports`
+- **Google Sheet:** `Employee Feedback Reports`
+  - **Sheet ID:** `1DesR4XurDJ2PoUae_JkjC199NucKEC6E3cdaeRI4GII`
+  - **Header Structure (23 Columns):**
+    `Case ID`, `Submitted At`, `Recording Duration`, `Feedback Category`, `Professional Summary`, `Key Points`, `People or Roles Mentioned`, `Dates or Time References`, `Workplace Impact`, `Support Requested`, `Urgency`, `Safety Concern`, `Information Not Clear`, `Audio Recording`, `Full Transcript`, `PDF Report`, `Processing Status`, `HR Status`, `Assigned HR`, `HR Remarks`, `Action Taken`, `Closed At`, `Last Updated`.
 
 ---
 
-### Step 2: Configure & Deploy to Vercel (Frontend)
+## 🚀 Setup & Deployment Guide
 
-1. Open `public/app.js` and paste your Google Apps Script **Web App URL** into `APPS_SCRIPT_URL`:
-   ```javascript
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-   ```
-2. Push your project to GitHub or deploy directly via [Vercel](https://vercel.com).
-3. Import the repository in Vercel and click **Deploy** (No custom build command required).
-4. Vercel will give you a public HTTPS URL (e.g., `https://speaksafe-hr.vercel.app`).
+### Step 1: Google Apps Script (Backend)
+1. Open [script.google.com](https://script.google.com).
+2. Paste the code from `apps_script/Code.gs`.
+3. Run `setupSpeakSafe()` to initialize the Drive folder & Sheet connection.
+4. Run `setApiKeys()` to set your **AssemblyAI API Key** and **OpenRouter API Key** in Script Properties.
+5. Click **Deploy > New deployment**:
+   - **Type:** Web app
+   - **Execute as:** Me
+   - **Who has access:** Anyone
+6. Copy the generated Web App URL.
+
+---
+
+### Step 2: Vercel Deployment (Frontend)
+1. Ensure `public/app.js` contains your deployed Apps Script URL.
+2. Push your project to GitHub repository `ahl-official/SpeakSafe-HR`.
+3. Import the repository in [Vercel.com](https://vercel.com) and click **Deploy**.
+4. Access your live public HTTPS link on any mobile or tablet browser!
 
 ---
 
