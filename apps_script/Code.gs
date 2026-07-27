@@ -282,7 +282,7 @@ function transcribeAudioUrl(uploadUrl) {
     throw new Error('AssemblyAI transcript request failed: ' + transcriptResp.getContentText());
   }
 
-  // Step B: Poll for completion (optimized 1.5s interval, max 30 seconds)
+  // Step B: Poll for completion (optimized 1.5s interval, max 52.5 seconds for long audio)
   const pollUrl = `https://api.assemblyai.com/v2/transcript/${transcriptId}`;
   const pollOptions = {
     method: 'get',
@@ -290,7 +290,7 @@ function transcribeAudioUrl(uploadUrl) {
     muteHttpExceptions: true
   };
 
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 35; i++) {
     Utilities.sleep(1500);
     const pollResp = UrlFetchApp.fetch(pollUrl, pollOptions);
     const pollJson = JSON.parse(pollResp.getContentText() || '{}');

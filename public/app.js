@@ -325,7 +325,7 @@ async function submitCase() {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 65000); // 65s timeout for Apps Script execution
+    const timeoutId = setTimeout(() => controller.abort(), 75000); // 75s timeout for Apps Script execution
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
