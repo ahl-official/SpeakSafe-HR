@@ -92,12 +92,11 @@ async function toggleRecording() {
 
 async function startRecording() {
   hideError();
-  state.recordedChunks = [];
-  state.transcript = '';
+  resetRecordingState();
 
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Web Audio API is not supported on this browser or origin.');
+      throw new Error('Web Audio API is not supported on this browser or connection context.');
     }
 
     // Request Microphone Permission
@@ -114,20 +113,26 @@ async function startRecording() {
       };
       state.mediaRecorder.start(1000);
     } catch (mrErr) {
-      console.warn('MediaRecorder fallback init skipped:', mrErr);
+      console.warn('MediaRecorder fallback init note:', mrErr);
     }
 
-    // UI Updates
+    // UI Updates for Active Recording
     btnRecord.classList.add('recording');
     if (btnRecordText) btnRecordText.textContent = 'Recording...';
-    document.querySelector('.wave-visualizer').classList.add('recording');
-    recordingStatus.textContent = 'Recording in progress... Speak clearly';
+    
+    const viz = document.querySelector('.wave-visualizer');
+    if (viz) viz.classList.add('recording');
+    
+    recordingStatus.textContent = 'Recording in progress... Speak clearly into your microphone';
     btnPause.classList.remove('hidden');
+    btnPause.textContent = 'Pause';
     btnStop.classList.remove('hidden');
     submitActions.classList.add('hidden');
 
-    // Timer Start
-    state.startTime = Date.now() - (state.elapsedSeconds * 1000);
+    // Timer Initialization
+    state.startTime = Date.now();
+    state.elapsedSeconds = 0;
+    timerDisplay.textContent = '00:00';
     state.timerInterval = setInterval(updateTimer, 1000);
 
     // Initialize Streaming Transcription
@@ -169,7 +174,7 @@ function stopRecording() {
   clearInterval(state.timerInterval);
 
   if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
-    state.mediaRecorder.stop();
+    try { state.mediaRecorder.stop(); } catch (e) {}
   }
 
   if (state.micStream) {
@@ -177,12 +182,15 @@ function stopRecording() {
   }
 
   if (state.ws) {
-    state.ws.close();
+    try { state.ws.close(); } catch (e) {}
   }
 
   btnRecord.classList.remove('recording');
   if (btnRecordText) btnRecordText.textContent = 'Start Recording';
-  document.querySelector('.wave-visualizer').classList.remove('recording');
+  
+  const viz = document.querySelector('.wave-visualizer');
+  if (viz) viz.classList.remove('recording');
+  
   recordingStatus.textContent = 'Recording complete. Click Submit to send feedback to HR.';
   
   btnPause.classList.add('hidden');
@@ -227,7 +235,7 @@ async function initStreamingTranscription() {
       }
     };
 
-    state.ws.onerror = (err) => console.warn('WebSocket stream error:', err);
+    state.ws.onerror = (err) => console.warn('WebSocket stream note:', err);
 
     state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
     const source = state.audioContext.createMediaStreamSource(state.micStream);
@@ -255,10 +263,10 @@ async function initStreamingTranscription() {
 }
 
 async function submitCase() {
-  if (state.isSubmitting) return;
+  if (state.isSubmitting) return; // Prevent double submit
   hideError();
 
-  const finalTranscript = state.transcript.trim() || 'Employee provided anonymous audio feedback.';
+  const finalTranscript = state.transcript.trim() || 'Employee submitted confidential voice feedback.';
   
   state.isSubmitting = true;
   btnSubmit.disabled = true;
@@ -293,7 +301,7 @@ async function submitCase() {
     console.error('Submission failure:', err);
     showStep(stepRecord);
     if (err.name === 'AbortError') {
-      showError('Network Timeout', 'The request timed out. Please check your connection and try again.');
+      showError('Network Timeout', 'The request timed out. Please check your internet connection and try again.');
     } else {
       showError('Submission Error', err.message || 'Failed to communicate with HR server. Please try again.');
     }
@@ -303,24 +311,36 @@ async function submitCase() {
   }
 }
 
+function resetRecordingState() {
+  state.transcript = '';
+  state.recordedChunks = [];
+  state.elapsedSeconds = 0;
+  if (state.timerInterval) clearInterval(state.timerInterval);
+}
+
 function resetRecordingUI() {
+  resetRecordingState();
   state.isRecording = false;
   state.isPaused = false;
-  state.elapsedSeconds = 0;
+  
   timerDisplay.textContent = '00:00';
   recordingStatus.textContent = 'Click "Start Recording" to speak';
+  
   btnRecord.classList.remove('recording');
+  btnRecord.disabled = false;
   if (btnRecordText) btnRecordText.textContent = 'Start Recording';
-  document.querySelector('.wave-visualizer').classList.remove('recording');
+  
+  const viz = document.querySelector('.wave-visualizer');
+  if (viz) viz.classList.remove('recording');
+  
   btnPause.classList.add('hidden');
+  btnPause.textContent = 'Pause';
   btnStop.classList.add('hidden');
   submitActions.classList.add('hidden');
 }
 
 function resetFlow() {
   resetRecordingUI();
-  state.transcript = '';
-  state.recordedChunks = [];
   showStep(stepConsent);
 }
 
