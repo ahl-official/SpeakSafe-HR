@@ -52,7 +52,7 @@ btnStartFlow.addEventListener('click', () => {
 });
 btnRecord.addEventListener('click', toggleRecording);
 btnPause.addEventListener('click', togglePause);
-btnStop.addEventListener('click', stopRecording);
+btnStop.addEventListener('click', () => stopRecording());
 btnSubmit.addEventListener('click', submitCase);
 btnReset.addEventListener('click', resetFlow);
 btnCopyCase.addEventListener('click', copyCaseId);
@@ -84,7 +84,7 @@ async function toggleRecording() {
   if (!state.isRecording) {
     await startRecording();
   } else {
-    stopRecording();
+    await stopRecording();
   }
 }
 
@@ -94,7 +94,7 @@ async function startRecording() {
 
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Web Audio Recording is not supported on this browser or origin.');
+      throw new Error('Web Audio Recording is not supported on this browser context.');
     }
 
     // 1. Request Microphone Permission
@@ -103,14 +103,18 @@ async function startRecording() {
     state.isPaused = false;
     state.recordedChunks = [];
     
-    // 2. Initialize Native MediaRecorder
+    // 2. Initialize Native MediaRecorder with codec fallback
     let options = {};
-    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-      options.mimeType = 'audio/webm;codecs=opus';
-    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-      options.mimeType = 'audio/mp4';
-    } else if (MediaRecorder.isTypeSupported('audio/aac')) {
-      options.mimeType = 'audio/aac';
+    if (typeof MediaRecorder !== 'undefined') {
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        options.mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        options.mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        options.mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+        options.mimeType = 'audio/aac';
+      }
     }
 
     state.mediaRecorder = new MediaRecorder(state.micStream, options);
@@ -122,9 +126,9 @@ async function startRecording() {
       }
     };
 
-    state.mediaRecorder.start(500); // Capture chunks every 500ms
+    state.mediaRecorder.start(250); // Flush chunks every 250ms
 
-    // 3. Update UI for Active Recording
+    // 3. Update UI
     btnRecord.classList.add('recording');
     if (btnRecordText) btnRecordText.textContent = 'Recording...';
     
@@ -178,29 +182,37 @@ function togglePause() {
 }
 
 function stopRecording() {
-  state.isRecording = false;
-  state.isPaused = false;
-  clearInterval(state.timerInterval);
+  return new Promise((resolve) => {
+    state.isRecording = false;
+    state.isPaused = false;
+    clearInterval(state.timerInterval);
 
-  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
-    try { state.mediaRecorder.stop(); } catch (e) {}
-  }
+    const finishStop = () => {
+      if (state.micStream) {
+        state.micStream.getTracks().forEach(track => track.stop());
+      }
 
-  if (state.micStream) {
-    state.micStream.getTracks().forEach(track => track.stop());
-  }
+      btnRecord.classList.remove('recording');
+      if (btnRecordText) btnRecordText.textContent = 'Start Recording';
+      
+      const viz = document.querySelector('.wave-visualizer');
+      if (viz) viz.classList.remove('recording');
+      
+      recordingStatus.textContent = 'Recording complete. Click Submit to send feedback to HR.';
+      
+      btnPause.classList.add('hidden');
+      btnStop.classList.add('hidden');
+      submitActions.classList.remove('hidden');
+      resolve();
+    };
 
-  btnRecord.classList.remove('recording');
-  if (btnRecordText) btnRecordText.textContent = 'Start Recording';
-  
-  const viz = document.querySelector('.wave-visualizer');
-  if (viz) viz.classList.remove('recording');
-  
-  recordingStatus.textContent = 'Recording complete. Click Submit to send feedback to HR.';
-  
-  btnPause.classList.add('hidden');
-  btnStop.classList.add('hidden');
-  submitActions.classList.remove('hidden');
+    if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+      state.mediaRecorder.onstop = () => finishStop();
+      try { state.mediaRecorder.stop(); } catch (e) { finishStop(); }
+    } else {
+      finishStop();
+    }
+  });
 }
 
 function updateTimer() {
@@ -212,7 +224,7 @@ function updateTimer() {
 }
 
 /**
- * Convert Recorded Chunks Blob to Base64
+ * Convert Recorded Chunks Blob to Base64 reliably
  */
 function getAudioBase64() {
   return new Promise((resolve, reject) => {
@@ -235,6 +247,10 @@ async function submitCase() {
   if (state.isSubmitting) return;
   hideError();
 
+  if (state.isRecording) {
+    await stopRecording();
+  }
+
   state.isSubmitting = true;
   btnSubmit.disabled = true;
   showStep(stepProcessing);
@@ -242,16 +258,15 @@ async function submitCase() {
   state.caseId = generateCaseId();
 
   try {
-    // 1. Convert Recorded Audio to Base64
+    // Convert Audio Chunks to Base64 string
     const audioBase64Data = await getAudioBase64();
 
     if (!audioBase64Data || audioBase64Data.length < 50) {
-      throw new Error('No audio recorded. Please record your feedback before submitting.');
+      throw new Error('No audio captured. Please speak into your microphone and record before submitting.');
     }
 
-    // 2. Submit to Google Apps Script
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for transcription
+    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50s timeout for transcription
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -278,9 +293,9 @@ async function submitCase() {
     console.error('Submission failure:', err);
     showStep(stepRecord);
     if (err.name === 'AbortError') {
-      showError('Network Timeout', 'The request timed out while processing transcription. Please try again.');
+      showError('Network Timeout', 'The request timed out while processing transcription. Please check internet connection and try again.');
     } else {
-      showError('Submission Error', err.message || 'Failed to submit feedback. Please check connection and try again.');
+      showError('Submission Error', err.message || 'Failed to submit feedback. Please try again.');
     }
   } finally {
     state.isSubmitting = false;
