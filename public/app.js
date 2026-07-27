@@ -565,7 +565,7 @@ async function submitCase() {
     let uploadUrl = null;
     let audioBase64 = null;
 
-    if (processingStatusText) processingStatusText.textContent = 'Uploading your audio securely...';
+    if (processingStatusText) processingStatusText.textContent = 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.';
 
     try {
       uploadUrl = await uploadAudioToAssemblyAI(audioBlob);
@@ -575,12 +575,12 @@ async function submitCase() {
 
     // Fallback: Convert to base64 for Apps Script upload
     if (!uploadUrl) {
-      if (processingStatusText) processingStatusText.textContent = 'Preparing audio for upload...';
+      if (processingStatusText) processingStatusText.textContent = 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.';
       audioBase64 = await blobToBase64(audioBlob);
     }
 
     setProcessingStep('transcribe');
-    if (processingStatusText) processingStatusText.textContent = 'Sending to server for transcription...';
+    if (processingStatusText) processingStatusText.textContent = 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.';
 
     // Step 2: Send to Apps Script
     const payload = {
@@ -674,7 +674,7 @@ function startPollingForCompletion(caseId) {
         clearInterval(state.pollInterval);
         state.pollInterval = null;
         setProcessingStep('save');
-        if (processingStatusText) processingStatusText.textContent = 'Saving report to HR Drive...';
+        if (processingStatusText) processingStatusText.textContent = 'Almost done — finalising your report...';
         await sleep(600);
         showConfirmation(caseId);
 
@@ -687,12 +687,12 @@ function startPollingForCompletion(caseId) {
 
       } else if (status === 'transcribing') {
         // Update status message based on elapsed time
-        const elapsedMin = Math.floor(pollCount * 15 / 60);
-        if (processingStatusText) {
-          processingStatusText.textContent = elapsedMin < 2
-            ? 'Transcribing your audio...'
-            : `Transcribing your audio (${elapsedMin} min elapsed — this is normal for longer recordings)`;
-        }
+          const elapsedMin = Math.floor(pollCount * 15 / 60);
+          if (processingStatusText) {
+            processingStatusText.textContent = elapsedMin < 2
+              ? 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.'
+              : 'Still working on your report — longer recordings take a little more time. Your anonymity is fully protected.';
+          }
       }
     } catch (pollErr) {
       console.warn('Poll attempt failed (will retry):', pollErr);

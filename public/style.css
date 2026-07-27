@@ -511,7 +511,8 @@ body {
   color: var(--text-primary);
 }
 
-.progress-steps {
+/* Reassurance box shown during processing — replaces technical step list */
+.reassurance-box {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -521,45 +522,22 @@ body {
   text-align: left;
 }
 
-.progress-step {
+.reassurance-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 11px 14px;
   font-size: 12.5px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
   background: var(--white);
-  transition: color 0.2s, background 0.2s;
 }
 
-.progress-step:last-child { border-bottom: none; }
+.reassurance-item:last-child { border-bottom: none; }
 
-.progress-step.is-active {
-  color: var(--blue-600);
-  background: var(--blue-50);
-  font-weight: 500;
-}
-
-.progress-step.is-done {
-  color: var(--green-600);
-}
-
-.ps-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--gray-300);
+.reassurance-item svg {
   flex-shrink: 0;
-  transition: background 0.2s;
-}
-
-.ps-dot.active {
-  background: var(--blue-600);
-}
-
-.ps-dot.done {
-  background: var(--green-600);
+  color: var(--gray-500);
 }
 
 .step-note {

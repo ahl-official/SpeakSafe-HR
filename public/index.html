@@ -169,29 +169,37 @@
       <!-- Step 3: Processing -->
       <section id="step-processing" class="step-panel hidden text-center" aria-labelledby="processing-heading" aria-live="polite">
         <div class="spinner" aria-hidden="true"></div>
-        <h2 id="processing-heading">Processing your feedback</h2>
-        <p id="processing-status-text" class="step-desc">Uploading audio to secure storage...</p>
+        <h2 id="processing-heading">Your report is being prepared</h2>
+        <p id="processing-status-text" class="step-desc">Your feedback is being processed confidentially. This may take a few minutes for longer recordings.</p>
 
-        <div class="progress-steps" aria-label="Processing steps">
-          <div class="progress-step" id="pstep-upload">
-            <div class="ps-dot active"></div>
-            <span>Uploading audio</span>
+        <div class="reassurance-box">
+          <div class="reassurance-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Your identity remains completely anonymous
           </div>
-          <div class="progress-step" id="pstep-transcribe">
-            <div class="ps-dot"></div>
-            <span>Transcribing speech</span>
+          <div class="reassurance-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Accessible only by designated HR leadership
           </div>
-          <div class="progress-step" id="pstep-report">
-            <div class="ps-dot"></div>
-            <span>Generating HR report</span>
-          </div>
-          <div class="progress-step" id="pstep-save">
-            <div class="ps-dot"></div>
-            <span>Saving to Drive</span>
+          <div class="reassurance-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            A neutral, professional report will be generated
           </div>
         </div>
 
-        <p class="step-note">Longer recordings may take a few minutes to transcribe. Please keep this tab open.</p>
+        <p class="step-note">Please keep this tab open until you receive your Case Reference Number.</p>
+
+        <!-- Hidden step trackers — used by JavaScript only, not visible to user -->
+        <span id="pstep-upload" style="display:none"></span>
+        <span id="pstep-transcribe" style="display:none"></span>
+        <span id="pstep-report" style="display:none"></span>
+        <span id="pstep-save" style="display:none"></span>
       </section>
 
       <!-- Step 4: Confirmation -->
