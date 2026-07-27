@@ -178,7 +178,30 @@ function processCaseSubmission(payload) {
     };
   }
 
-  // 3. Save Transcript File in Google Drive
+  // 3. Save Audio Recording File in Google Drive
+  let audioFile = { link: '' };
+  try {
+    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    if (uploadUrl && uploadUrl.startsWith('http')) {
+      const audioResp = UrlFetchApp.fetch(uploadUrl);
+      const audioBlob = audioResp.getBlob().setName(`${caseId}-audio.${ext}`);
+      const folder = targetFolder('audio');
+      const file = folder.createFile(audioBlob);
+      file.setDescription(`SpeakSafe HR | Case ${caseId} | Audio Recording`);
+      audioFile = { id: file.getId(), link: file.getUrl() };
+    } else if (audioBase64 && audioBase64.length > 100) {
+      const audioBytes = Utilities.base64Decode(audioBase64);
+      const blob = Utilities.newBlob(audioBytes, mimeType, `${caseId}-audio.${ext}`);
+      const folder = targetFolder('audio');
+      const file = folder.createFile(blob);
+      file.setDescription(`SpeakSafe HR | Case ${caseId} | Audio Recording`);
+      audioFile = { id: file.getId(), link: file.getUrl() };
+    }
+  } catch (audioErr) {
+    console.error('Failed to save audio file in Drive: ' + safeError(audioErr));
+  }
+
+  // 4. Save Transcript File in Google Drive
   let transcriptFile = { link: '' };
   try {
     transcriptFile = saveDriveFile(caseId, 'transcript', cleanTranscript, `${caseId}-transcript.txt`, 'text/plain');
@@ -186,7 +209,7 @@ function processCaseSubmission(payload) {
     console.error('Failed to save transcript in Drive: ' + safeError(driveErr));
   }
 
-  // 4. Generate HTML Report & Convert to PDF File in Drive
+  // 5. Generate HTML Report & Convert to PDF File in Drive
   let pdfFile = { link: '' };
   try {
     const pdfHtml = renderPdfHtml(caseId, aiReport, cleanTranscript);
@@ -195,7 +218,7 @@ function processCaseSubmission(payload) {
     console.error('Failed to save PDF report in Drive: ' + safeError(pdfErr));
   }
 
-  // 5. Update Google Sheet Row (23 Columns)
+  // 6. Update Google Sheet Row (23 Columns)
   const nowStr = Utilities.formatDate(new Date(), config('TIME_ZONE') || 'Asia/Kolkata', "yyyy-MM-dd HH:mm 'IST'");
   const sheetRow = {
     'Case ID': caseId,
@@ -211,7 +234,7 @@ function processCaseSubmission(payload) {
     'Urgency': aiReport.urgency || 'Normal',
     'Safety Concern': aiReport.safety_concern ? 'YES' : 'No',
     'Information Not Clear': aiReport.information_unclear || 'None',
-    'Audio Recording': 'N/A (Processed)',
+    'Audio Recording': audioFile.link || 'Logged in Sheet',
     'Full Transcript': transcriptFile.link || 'Logged in Sheet',
     'PDF Report': pdfFile.link || 'Logged in Sheet',
     'Processing Status': 'Completed',
@@ -224,6 +247,7 @@ function processCaseSubmission(payload) {
   return {
     case_id: caseId,
     transcript: cleanTranscript,
+    audio_url: audioFile.link,
     transcript_url: transcriptFile.link,
     pdf_url: pdfFile.link,
     sheet_updated: sheetResult.updated,
@@ -480,6 +504,30 @@ function renderPdfHtml(caseId, report, transcript) {
   `;
 }
 
+function setupSpeakSafe() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const rootFolderId = DEFAULT_CONFIG.rootFolderId;
+    const rootFolder = DriveApp.getFolderById(rootFolderId);
+    properties.setProperty('ROOT_FOLDER_ID', rootFolderId);
+
+    getOrCreateFolder(rootFolder, 'Transcripts');
+    getOrCreateFolder(rootFolder, 'PDF Reports');
+    getOrCreateFolder(rootFolder, 'Audio Recordings');
+
+    const sheetId = DEFAULT_CONFIG.spreadsheetId;
+    properties.setProperty('SHEET_ID', sheetId);
+    properties.setProperty('SHEET_TAB_NAME', DEFAULT_CONFIG.sheetName);
+    properties.setProperty('TIME_ZONE', DEFAULT_CONFIG.timeZone);
+
+    initializeSheet();
+    console.log('SpeakSafe HR setup completed successfully!');
+  } catch (e) {
+    console.error('Setup failed: ' + safeError(e));
+    throw e;
+  }
+}
+
 function upsertSheetRow(payload) {
   if (!payload.row || !validCaseId(payload.row['Case ID'])) throw new Error('Invalid case data for sheet upsert.');
   const lock = LockService.getScriptLock();
@@ -493,6 +541,7 @@ function upsertSheetRow(payload) {
     if (rowNumber < 2) rowNumber = lastRow + 1;
     
     sheet.getRange(rowNumber, 1, 1, HEADERS.length).setValues([HEADERS.map((header) => payload.row[header] || '')]);
+    setLink(sheet, rowNumber, 14, payload.row['Audio Recording']);
     setLink(sheet, rowNumber, 15, payload.row['Full Transcript']);
     setLink(sheet, rowNumber, 16, payload.row['PDF Report']);
     return { row_number: rowNumber, updated: rowNumber <= lastRow };
