@@ -30,6 +30,7 @@ const stepConfirm = document.getElementById('step-confirm');
 
 const btnStartFlow = document.getElementById('btn-start-flow');
 const btnRecord = document.getElementById('btn-record');
+const btnRecordText = document.getElementById('btn-record-text');
 const btnPause = document.getElementById('btn-pause');
 const btnStop = document.getElementById('btn-stop');
 const btnSubmit = document.getElementById('btn-submit');
@@ -47,7 +48,10 @@ const errorMessage = document.getElementById('error-message');
 const btnCloseError = document.getElementById('btn-close-error');
 
 // Event Listeners
-btnStartFlow.addEventListener('click', () => showStep(stepRecord));
+btnStartFlow.addEventListener('click', () => {
+  resetRecordingUI();
+  showStep(stepRecord);
+});
 btnRecord.addEventListener('click', toggleRecording);
 btnPause.addEventListener('click', togglePause);
 btnStop.addEventListener('click', stopRecording);
@@ -115,7 +119,8 @@ async function startRecording() {
 
     // UI Updates
     btnRecord.classList.add('recording');
-    document.querySelector('.audio-visualizer').classList.add('recording');
+    if (btnRecordText) btnRecordText.textContent = 'Recording...';
+    document.querySelector('.wave-visualizer').classList.add('recording');
     recordingStatus.textContent = 'Recording in progress... Speak clearly';
     btnPause.classList.remove('hidden');
     btnStop.classList.remove('hidden');
@@ -176,7 +181,8 @@ function stopRecording() {
   }
 
   btnRecord.classList.remove('recording');
-  document.querySelector('.audio-visualizer').classList.remove('recording');
+  if (btnRecordText) btnRecordText.textContent = 'Start Recording';
+  document.querySelector('.wave-visualizer').classList.remove('recording');
   recordingStatus.textContent = 'Recording complete. Click Submit to send feedback to HR.';
   
   btnPause.classList.add('hidden');
@@ -249,7 +255,7 @@ async function initStreamingTranscription() {
 }
 
 async function submitCase() {
-  if (state.isSubmitting) return; // Prevent double clicks
+  if (state.isSubmitting) return;
   hideError();
 
   const finalTranscript = state.transcript.trim() || 'Employee provided anonymous audio feedback.';
@@ -262,7 +268,7 @@ async function submitCase() {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 28000);
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -302,9 +308,10 @@ function resetRecordingUI() {
   state.isPaused = false;
   state.elapsedSeconds = 0;
   timerDisplay.textContent = '00:00';
-  recordingStatus.textContent = 'Ready to record';
+  recordingStatus.textContent = 'Click "Start Recording" to speak';
   btnRecord.classList.remove('recording');
-  document.querySelector('.audio-visualizer').classList.remove('recording');
+  if (btnRecordText) btnRecordText.textContent = 'Start Recording';
+  document.querySelector('.wave-visualizer').classList.remove('recording');
   btnPause.classList.add('hidden');
   btnStop.classList.add('hidden');
   submitActions.classList.add('hidden');

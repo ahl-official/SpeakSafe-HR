@@ -216,6 +216,18 @@ body {
 
 .btn-primary:hover { background: var(--brand-blue-hover); }
 
+.btn-start-rec {
+  background: var(--brand-blue);
+  color: #ffffff;
+  padding: 14px 24px;
+  font-size: 1rem;
+  border-radius: var(--radius-btn);
+}
+
+.btn-start-rec.recording {
+  background: var(--rose-danger);
+}
+
 .btn-outline {
   background: #ffffff;
   color: var(--text-main);
@@ -291,27 +303,11 @@ body {
 
 .button-group {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 12px;
   margin-top: 6px;
-}
-
-.btn-mic {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: none;
-  background: var(--primary-navy);
-  color: #ffffff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease;
-}
-
-.btn-mic.recording {
-  background: var(--rose-danger);
 }
 
 .submit-wrap {
