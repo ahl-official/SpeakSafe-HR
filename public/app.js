@@ -485,14 +485,8 @@ function getAudioBlob() {
   return new Blob(state.recordedChunks, { type: state.audioMimeType });
 }
 
-// ─── Direct Upload to AssemblyAI CDN ──────────────────────────────────────────
-// The browser uploads audio directly to AssemblyAI's CDN endpoint.
-// This bypasses Vercel payload limits and Apps Script URL fetch size limits.
-// The AssemblyAI upload endpoint accepts the API key in the Authorization header.
-// This is intentional by AssemblyAI's design for browser-based uploads.
+// ─── Direct Upload to AssemblyAI CDN (long audio only) ────────────────────────
 async function uploadAudioToAssemblyAI(audioBlob) {
-  // Fetch the API key from Apps Script instead of hardcoding it here
-  // For now we use the stored key via a GET request to our backend
   const keyResp = await fetch(APPS_SCRIPT_URL + '?action=get_upload_key', {
     method: 'GET',
     cache: 'no-store',
@@ -506,19 +500,14 @@ async function uploadAudioToAssemblyAI(audioBlob) {
     } catch (e) {}
   }
 
-  // If the backend doesn't support key proxy yet, the upload will be handled
-  // server-side — we skip direct upload and let Apps Script handle it
   if (!apiKey) {
-    console.log('No upload key from server; will use base64 fallback.');
+    console.log('No upload key returned from server.');
     return null;
   }
 
   const response = await fetch('https://api.assemblyai.com/v2/upload', {
     method: 'POST',
-    headers: {
-      'authorization': apiKey,
-      'content-type': 'application/octet-stream',
-    },
+    headers: { 'authorization': apiKey, 'content-type': 'application/octet-stream' },
     body: audioBlob,
   });
 
@@ -536,10 +525,7 @@ async function submitCase() {
   if (state.isSubmitting) return;
   hideError();
 
-  // Stop recording if still active
-  if (state.isRecording) {
-    await stopRecording();
-  }
+  if (state.isRecording) await stopRecording();
 
   const audioBlob = getAudioBlob();
   if (!audioBlob || audioBlob.size < 300) {
@@ -547,7 +533,6 @@ async function submitCase() {
     return;
   }
 
-  // Large file warning (> 500MB is unrealistic, but > 100MB give notice)
   if (audioBlob.size > 100 * 1024 * 1024) {
     showError('Recording Very Large', 'Your recording is very large. Upload may take several minutes. Please stay on this page.');
   }
@@ -555,34 +540,23 @@ async function submitCase() {
   state.isSubmitting = true;
   btnSubmit.disabled = true;
   state.caseId = generateCaseId();
-
-  // Show processing screen
   showStep(stepProcessing);
-  setProcessingStep('upload');
 
   try {
-    // Step 1: Try direct browser → AssemblyAI CDN upload
-    let uploadUrl = null;
-    let audioBase64 = null;
+    // ══ SMART ROUTING ══════════════════════════════════════════════════════════
+    //
+    //  SHORT audio (< 5 min):
+    //    base64  →  Apps Script (sync transcription)  →  returns immediately
+    //    No extra cold-start round trip. No webhook. No polling. ~15s total.
+    //
+    //  LONG audio (≥ 5 min):
+    //    Direct CDN upload  →  Apps Script (submits async job)  →  returns fast
+    //    AssemblyAI webhooks back when done. Browser polls every 5s.
+    //
+    // ══════════════════════════════════════════════════════════════════════════
 
-    if (processingStatusText) processingStatusText.textContent = 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.';
+    const isShortAudio = state.elapsedSeconds < 300; // < 5 minutes
 
-    try {
-      uploadUrl = await uploadAudioToAssemblyAI(audioBlob);
-    } catch (uploadErr) {
-      console.warn('Direct upload attempt failed:', uploadErr);
-    }
-
-    // Fallback: Convert to base64 for Apps Script upload
-    if (!uploadUrl) {
-      if (processingStatusText) processingStatusText.textContent = 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.';
-      audioBase64 = await blobToBase64(audioBlob);
-    }
-
-    setProcessingStep('transcribe');
-    if (processingStatusText) processingStatusText.textContent = 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.';
-
-    // Step 2: Send to Apps Script
     const payload = {
       action: 'process_case',
       case_id: state.caseId,
@@ -591,14 +565,33 @@ async function submitCase() {
       duration_seconds: state.elapsedSeconds,
     };
 
-    if (uploadUrl) {
-      payload.upload_url = uploadUrl;
-    } else if (audioBase64) {
-      payload.audio_base64 = audioBase64;
+    if (isShortAudio) {
+      // ── FAST SYNC PATH ─────────────────────────────────────────────────────
+      // Skip key fetch entirely. Convert blob to base64 and send directly.
+      // Apps Script transcribes synchronously and returns the full result.
+      console.log(`Short audio (${state.elapsedSeconds}s) — using fast sync path.`);
+      payload.audio_base64 = await blobToBase64(audioBlob);
+
+    } else {
+      // ── ASYNC CDN PATH ─────────────────────────────────────────────────────
+      // Try direct browser → AssemblyAI CDN upload (bypasses 50MB limit).
+      // Falls back to base64 if key unavailable.
+      console.log(`Long audio (${state.elapsedSeconds}s) — using async CDN path.`);
+      let uploadUrl = null;
+      try {
+        uploadUrl = await uploadAudioToAssemblyAI(audioBlob);
+      } catch (e) {
+        console.warn('CDN upload failed, falling back to base64:', e);
+      }
+
+      if (uploadUrl) {
+        payload.upload_url = uploadUrl;
+      } else {
+        payload.audio_base64 = await blobToBase64(audioBlob);
+      }
     }
 
-    // No abort timeout — we let this run as long as needed for large files
-    // For 1-2hr audio the server returns immediately (async webhook pattern)
+    // Send payload to Apps Script backend
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
@@ -645,7 +638,7 @@ async function submitCase() {
 // ─── Async Polling for Long Audio ─────────────────────────────────────────────
 function startPollingForCompletion(caseId) {
   let pollCount = 0;
-  const maxPolls = 120; // 120 × 15s = 30 minutes max poll time
+  const maxPolls = 360; // 360 × 5s = 30 minutes max poll time
 
   state.pollInterval = setInterval(async () => {
     pollCount++;
@@ -686,18 +679,17 @@ function startPollingForCompletion(caseId) {
         showError('Partial Processing', 'Audio was saved but transcription encountered an issue. HR will review the recording directly.');
 
       } else if (status === 'transcribing') {
-        // Update status message based on elapsed time
-          const elapsedMin = Math.floor(pollCount * 15 / 60);
-          if (processingStatusText) {
-            processingStatusText.textContent = elapsedMin < 2
-              ? 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.'
-              : 'Still working on your report — longer recordings take a little more time. Your anonymity is fully protected.';
-          }
+        const elapsedMin = Math.floor(pollCount * 5 / 60);
+        if (processingStatusText) {
+          processingStatusText.textContent = elapsedMin < 2
+            ? 'Your feedback is being processed confidentially. This may take a few minutes for longer recordings.'
+            : 'Still working on your report — longer recordings take a little more time. Your anonymity is fully protected.';
+        }
       }
     } catch (pollErr) {
       console.warn('Poll attempt failed (will retry):', pollErr);
     }
-  }, 15000); // Poll every 15 seconds
+  }, 5000); // Poll every 5 seconds
 }
 
 function showConfirmation(caseId) {
