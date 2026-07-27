@@ -197,12 +197,12 @@ function stopRecording() {
       }
 
       btnRecord.classList.remove('recording');
-      if (btnRecordText) btnRecordText.textContent = 'Start Recording';
+      if (btnRecordText) btnRecordText.textContent = 'Record Again';
       
       const viz = document.querySelector('.wave-visualizer');
       if (viz) viz.classList.remove('recording');
       
-      recordingStatus.textContent = 'Recording complete. Click Submit to send feedback to HR.';
+      recordingStatus.textContent = 'Recording complete! Click "Submit Anonymous Feedback" below to send, or "Record Again" to start over.';
       
       btnPause.classList.add('hidden');
       btnStop.classList.add('hidden');
