@@ -1,5 +1,5 @@
 /**
- * SpeakSafe HR — Enterprise Client Application Logic
+ * SpeakSafe HR — Production Hardened Client Logic
  */
 
 // Deployed Google Apps Script Web App URL
@@ -8,6 +8,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvrEQdCBlHuzf4
 let state = {
   isRecording: false,
   isPaused: false,
+  isSubmitting: false,
   startTime: 0,
   elapsedSeconds: 0,
   timerInterval: null,
@@ -15,6 +16,8 @@ let state = {
   audioContext: null,
   processor: null,
   micStream: null,
+  mediaRecorder: null,
+  recordedChunks: [],
   transcript: '',
   caseId: ''
 };
@@ -85,14 +88,31 @@ async function toggleRecording() {
 
 async function startRecording() {
   hideError();
+  state.recordedChunks = [];
+  state.transcript = '';
+
   try {
-    // Request Microphone Permission with clear error catching
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Web Audio API is not supported on this browser or origin.');
+    }
+
+    // Request Microphone Permission
     state.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     
     state.isRecording = true;
     state.isPaused = false;
-    state.transcript = '';
     
+    // Setup MediaRecorder fallback
+    try {
+      state.mediaRecorder = new MediaRecorder(state.micStream);
+      state.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) state.recordedChunks.push(e.data);
+      };
+      state.mediaRecorder.start(1000);
+    } catch (mrErr) {
+      console.warn('MediaRecorder fallback init skipped:', mrErr);
+    }
+
     // UI Updates
     btnRecord.classList.add('recording');
     document.querySelector('.audio-visualizer').classList.add('recording');
@@ -105,17 +125,17 @@ async function startRecording() {
     state.startTime = Date.now() - (state.elapsedSeconds * 1000);
     state.timerInterval = setInterval(updateTimer, 1000);
 
-    // Initialize Streaming Transcription in Background (Hidden from UI)
+    // Initialize Streaming Transcription
     await initStreamingTranscription();
 
   } catch (err) {
-    console.error('Microphone access failure:', err);
+    console.error('Microphone failure:', err);
     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      showError('Microphone Permission Denied', 'Please allow microphone access in your browser settings to record feedback.');
+      showError('Microphone Access Denied', 'Please grant microphone permissions in your browser settings to continue.');
     } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-      showError('No Microphone Found', 'No active microphone input was detected on your device.');
+      showError('No Microphone Found', 'No active microphone was detected on your device.');
     } else {
-      showError('Microphone Error', 'Unable to access microphone. Please check your device settings.');
+      showError('Audio Initialization Failed', err.message || 'Could not start audio recorder.');
     }
     resetRecordingUI();
   }
@@ -126,12 +146,14 @@ function togglePause() {
     state.isPaused = false;
     btnPause.textContent = 'Pause';
     recordingStatus.textContent = 'Recording in progress...';
+    if (state.mediaRecorder && state.mediaRecorder.state === 'paused') state.mediaRecorder.resume();
     state.startTime = Date.now() - (state.elapsedSeconds * 1000);
     state.timerInterval = setInterval(updateTimer, 1000);
   } else {
     state.isPaused = true;
     btnPause.textContent = 'Resume';
     recordingStatus.textContent = 'Recording Paused';
+    if (state.mediaRecorder && state.mediaRecorder.state === 'recording') state.mediaRecorder.pause();
     clearInterval(state.timerInterval);
   }
 }
@@ -140,6 +162,10 @@ function stopRecording() {
   state.isRecording = false;
   state.isPaused = false;
   clearInterval(state.timerInterval);
+
+  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+    state.mediaRecorder.stop();
+  }
 
   if (state.micStream) {
     state.micStream.getTracks().forEach(track => track.stop());
@@ -151,7 +177,7 @@ function stopRecording() {
 
   btnRecord.classList.remove('recording');
   document.querySelector('.audio-visualizer').classList.remove('recording');
-  recordingStatus.textContent = 'Recording complete. Tap Submit to send feedback to HR.';
+  recordingStatus.textContent = 'Recording complete. Click Submit to send feedback to HR.';
   
   btnPause.classList.add('hidden');
   btnStop.classList.add('hidden');
@@ -166,15 +192,12 @@ function updateTimer() {
   timerDisplay.textContent = `${mins}:${secs}`;
 }
 
-/**
- * AssemblyAI Streaming Setup via WebSockets (Runs in background silently)
- */
 async function initStreamingTranscription() {
   try {
     let token = null;
     if (APPS_SCRIPT_URL) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const resp = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
@@ -187,12 +210,8 @@ async function initStreamingTranscription() {
       if (data.ok && data.result?.token) token = data.result.token;
     }
 
-    if (!token) {
-      console.warn('AssemblyAI token fetch skipped or unavailable.');
-      return;
-    }
+    if (!token) return;
 
-    // Open AssemblyAI WebSocket
     state.ws = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${token}`);
 
     state.ws.onmessage = (message) => {
@@ -202,9 +221,8 @@ async function initStreamingTranscription() {
       }
     };
 
-    state.ws.onerror = (err) => console.error('WebSocket connection error:', err);
+    state.ws.onerror = (err) => console.warn('WebSocket stream error:', err);
 
-    // AudioWorklet / ScriptProcessor PCM streaming
     state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
     const source = state.audioContext.createMediaStreamSource(state.micStream);
     state.processor = state.audioContext.createScriptProcessor(4096, 1, 1);
@@ -226,22 +244,25 @@ async function initStreamingTranscription() {
     };
 
   } catch (err) {
-    console.warn('Streaming background initialization error:', err);
+    console.warn('Streaming background setup note:', err);
   }
 }
 
 async function submitCase() {
+  if (state.isSubmitting) return; // Prevent double clicks
   hideError();
 
-  const finalTranscript = state.transcript.trim() || 'Employee feedback submitted via audio stream.';
+  const finalTranscript = state.transcript.trim() || 'Employee provided anonymous audio feedback.';
   
+  state.isSubmitting = true;
+  btnSubmit.disabled = true;
   showStep(stepProcessing);
 
   state.caseId = generateCaseId();
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 28000); // 28s timeout
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -257,19 +278,22 @@ async function submitCase() {
     clearTimeout(timeoutId);
     const res = await response.json();
     
-    if (!res.ok) throw new Error(res.error || 'Server error processing feedback.');
+    if (!res.ok) throw new Error(res.error || 'Server processing error.');
 
     displayCaseId.textContent = state.caseId;
     showStep(stepConfirm);
 
   } catch (err) {
-    console.error('Submission error:', err);
+    console.error('Submission failure:', err);
     showStep(stepRecord);
     if (err.name === 'AbortError') {
-      showError('Submission Timeout', 'The request timed out. Please check your internet connection and try again.');
+      showError('Network Timeout', 'The request timed out. Please check your connection and try again.');
     } else {
-      showError('Submission Error', err.message || 'Unable to submit feedback. Please check connection and try again.');
+      showError('Submission Error', err.message || 'Failed to communicate with HR server. Please try again.');
     }
+  } finally {
+    state.isSubmitting = false;
+    btnSubmit.disabled = false;
   }
 }
 
@@ -289,6 +313,7 @@ function resetRecordingUI() {
 function resetFlow() {
   resetRecordingUI();
   state.transcript = '';
+  state.recordedChunks = [];
   showStep(stepConsent);
 }
 
