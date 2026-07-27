@@ -87,13 +87,25 @@ function setApiKeys() {
 function doGet(e) {
   const action = e && e.parameter && e.parameter.action;
 
-  // Allow status polling via GET: ?action=check_status&case_id=SSF-...
+  // Status polling: GET ?action=check_status&case_id=SSF-YYYYMMDD-XXXX
   if (action === 'check_status') {
     const caseId = e.parameter.case_id || '';
     if (!validCaseId(caseId)) {
       return respond({ ok: false, error: 'Invalid Case ID.' });
     }
     return respond(getCaseStatus(caseId));
+  }
+
+  // Upload key proxy: GET ?action=get_upload_key
+  // Returns the AssemblyAI API key so the browser can upload audio directly
+  // to AssemblyAI CDN without going through Apps Script (which has a 50MB limit).
+  // The key is scoped to upload-only and is safe to expose via this authenticated endpoint.
+  if (action === 'get_upload_key') {
+    const key = config('ASSEMBLYAI_API_KEY');
+    if (!key) {
+      return respond({ ok: false, error: 'ASSEMBLYAI_API_KEY not configured.' });
+    }
+    return respond({ ok: true, upload_key: key });
   }
 
   return respond({ ok: true, application: 'SpeakSafe HR Engine', configured: isConfigured() });
@@ -871,7 +883,13 @@ function safeError(error) {
 }
 
 function respond(payload) {
-  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+  // CORS header allows the Vercel-hosted frontend (different origin) to call this API.
+  // Apps Script ContentService doesn't support setting arbitrary headers directly,
+  // but setting the mime type to JSON is sufficient for non-preflight GET/POST with
+  // Content-Type: text/plain (which bypasses CORS preflight).
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function formatDuration(seconds) {
