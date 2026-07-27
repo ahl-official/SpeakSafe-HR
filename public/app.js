@@ -39,6 +39,7 @@ const btnSubmit = document.getElementById('btn-submit');
 const btnReset = document.getElementById('btn-reset');
 const btnCopyCase = document.getElementById('btn-copy-case');
 const submitActions = document.getElementById('submit-actions');
+const btnDiscard = document.getElementById('btn-discard');
 
 const timerDisplay = document.getElementById('timer');
 const recordingStatus = document.getElementById('recording-status');
@@ -58,6 +59,7 @@ btnRecord.addEventListener('click', toggleRecording);
 btnPause.addEventListener('click', togglePause);
 btnStop.addEventListener('click', () => stopRecording());
 btnSubmit.addEventListener('click', submitCase);
+if (btnDiscard) btnDiscard.addEventListener('click', resetRecordingUI);
 btnReset.addEventListener('click', resetFlow);
 btnCopyCase.addEventListener('click', copyCaseId);
 btnCloseError.addEventListener('click', hideError);
@@ -132,7 +134,8 @@ async function startRecording() {
 
     state.mediaRecorder.start(250); // Flush chunks every 250ms
 
-    // 3. Update UI
+    // 3. Update UI for Recording State
+    btnRecord.classList.remove('hidden');
     btnRecord.classList.add('recording');
     if (btnRecordText) btnRecordText.textContent = 'Recording...';
     
@@ -197,12 +200,12 @@ function stopRecording() {
       }
 
       btnRecord.classList.remove('recording');
-      if (btnRecordText) btnRecordText.textContent = 'Record Again';
+      btnRecord.classList.add('hidden'); // Hide recording button when stopped to avoid confusion
       
       const viz = document.querySelector('.wave-visualizer');
       if (viz) viz.classList.remove('recording');
       
-      recordingStatus.textContent = 'Recording complete! Click "Submit Anonymous Feedback" below to send, or "Record Again" to start over.';
+      recordingStatus.textContent = 'Recording complete! Click "Submit Anonymous Feedback" below, or "Discard & Start Over".';
       
       btnPause.classList.add('hidden');
       btnStop.classList.add('hidden');
@@ -372,6 +375,7 @@ function resetRecordingUI() {
   recordingStatus.textContent = 'Click "Start Recording" to speak';
   
   btnRecord.classList.remove('recording');
+  btnRecord.classList.remove('hidden');
   btnRecord.disabled = false;
   if (btnRecordText) btnRecordText.textContent = 'Start Recording';
   
