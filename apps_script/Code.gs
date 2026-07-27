@@ -816,11 +816,6 @@ function renderPdfHtml(caseId, report, transcript) {
     </table>
   </div>
 
-  <div class="section">
-    <div class="section-title">Full Verbatim Transcript</div>
-    <div class="content-box" style="font-size: 12px; white-space: pre-wrap;">${safeStr(transcript)}</div>
-  </div>
-
   <div class="footer">
     Strictly Confidential — Designated HR Restricted Access Only | SpeakSafe HR System
   </div>
