@@ -4,160 +4,140 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>SpeakSafe HR — Anonymous Employee Feedback Portal</title>
-  <meta name="description" content="A secure, 100% anonymous channel for employees to share workplace concerns, feedback, and suggestions with HR leadership.">
+  <meta name="description" content="A secure, 100% anonymous channel for employees to share workplace concerns with HR leadership.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Animated Background -->
-  <div class="bg-orbs" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-  </div>
-
   <div class="portal-container">
 
-    <!-- Top Header -->
+    <!-- Header -->
     <header class="portal-header">
       <div class="header-brand">
         <div class="brand-logo" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
         </div>
         <div>
-          <h1 class="portal-title">SpeakSafe <span class="portal-badge">HR</span></h1>
-          <span class="portal-sub">Confidential Feedback Portal</span>
+          <div class="portal-title">SpeakSafe <span class="portal-tag">HR</span></div>
+          <div class="portal-sub">Employee Feedback Portal</div>
         </div>
       </div>
-      <div class="security-pill" aria-label="End-to-end encrypted session">
-        <span class="security-dot" aria-hidden="true"></span>
-        <span>Secure Session</span>
+      <div class="secure-badge" aria-label="Secure anonymous session">
+        <span class="secure-dot" aria-hidden="true"></span>
+        Secure &amp; Anonymous
       </div>
     </header>
 
-    <!-- Global Alert Banner -->
-    <div id="error-banner" class="alert-banner hidden" role="alert" aria-live="assertive">
-      <div class="alert-body">
-        <svg class="alert-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <!-- Error Banner -->
+    <div id="error-banner" class="error-banner hidden" role="alert" aria-live="assertive">
+      <div class="error-body">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <div>
-          <strong id="error-title">Notice</strong>
-          <span id="error-message"> An issue occurred.</span>
-        </div>
+        <span><strong id="error-title">Error</strong><span id="error-message"></span></span>
       </div>
-      <button id="btn-close-error" class="alert-dismiss" aria-label="Dismiss alert">&times;</button>
+      <button id="btn-close-error" class="error-close" aria-label="Dismiss">&times;</button>
     </div>
 
-    <!-- Main Content Card -->
+    <!-- Main Card -->
     <main class="portal-card" role="main">
 
-      <!-- ══ STEP 1: Privacy Notice & Consent ══ -->
+      <!-- Step 1: Privacy Notice -->
       <section id="step-consent" class="step-panel active" aria-labelledby="consent-heading">
-        <div class="section-intro">
-          <div class="intro-eyebrow">Anonymous Voice Feedback</div>
-          <h2 id="consent-heading">Your voice matters.<br>Your identity doesn't.</h2>
-          <p>SpeakSafe HR gives you a private, secure channel to share workplace concerns without fear. No identity, no tracking — only your words.</p>
+        <div class="step-header">
+          <h2 id="consent-heading">Share your feedback, privately</h2>
+          <p>SpeakSafe HR is a confidential channel for employees to raise concerns, report issues, and share feedback — without revealing their identity.</p>
         </div>
 
-        <div class="trust-grid" role="list">
-          <div class="trust-card" role="listitem">
-            <div class="trust-icon-wrap trust-green" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <div class="guarantee-list" role="list">
+          <div class="guarantee-item" role="listitem">
+            <div class="guarantee-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
             </div>
             <div>
-              <h3>Zero Identity Collection</h3>
-              <p>No name, email, ID, or IP address is stored. Your submission is fully anonymous.</p>
+              <div class="guarantee-title">Fully Anonymous</div>
+              <div class="guarantee-desc">No name, email, employee ID, or device information is collected or stored.</div>
             </div>
           </div>
-
-          <div class="trust-card" role="listitem">
-            <div class="trust-icon-wrap trust-blue" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <div class="guarantee-item" role="listitem">
+            <div class="guarantee-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
               </svg>
             </div>
             <div>
-              <h3>Neutral AI Summary</h3>
-              <p>Your feedback is summarized objectively into a professional HR report using AI.</p>
+              <div class="guarantee-title">AI-Summarised Report</div>
+              <div class="guarantee-desc">Your feedback is transcribed and summarised into a neutral, professional HR report.</div>
             </div>
           </div>
-
-          <div class="trust-card" role="listitem">
-            <div class="trust-icon-wrap trust-purple" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <div class="guarantee-item" role="listitem">
+            <div class="guarantee-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
             <div>
-              <h3>HR-Only Access</h3>
-              <p>Reports go directly to designated HR leadership in a secured, restricted Drive folder.</p>
+              <div class="guarantee-title">HR Leadership Access Only</div>
+              <div class="guarantee-desc">Reports are delivered directly to designated HR leaders in restricted Drive storage.</div>
             </div>
           </div>
         </div>
 
-        <button id="btn-start-flow" class="btn btn-primary btn-full" aria-label="Begin anonymous feedback session">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <div class="divider"></div>
+
+        <button id="btn-start-flow" class="btn btn-primary btn-block">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
             <line x1="12" y1="19" x2="12" y2="22"/>
           </svg>
           Begin Anonymous Feedback
         </button>
-
-        <p class="consent-note" role="note">
-          By continuing you confirm you are an employee of this organisation and agree to submit feedback in good faith.
-        </p>
+        <p class="consent-note">By continuing, you confirm you are an employee of this organisation and are submitting feedback in good faith.</p>
       </section>
 
-      <!-- ══ STEP 2: Voice Recording Console ══ -->
+      <!-- Step 2: Recording -->
       <section id="step-record" class="step-panel hidden" aria-labelledby="record-heading">
-        <div class="section-intro text-center">
-          <h2 id="record-heading">Record Your Feedback</h2>
-          <p>Speak freely. Your recording is never stored on our servers — it goes directly to secure HR storage.</p>
+        <div class="step-header text-center">
+          <h2 id="record-heading">Record your feedback</h2>
+          <p>Press Start Recording when ready. Speak clearly — recordings go directly to secure HR storage.</p>
         </div>
 
-        <div class="recorder-box">
-          <!-- Timer -->
+        <div class="recorder-panel">
           <div class="timer-row">
             <span id="recording-live-dot" class="rec-dot hidden" aria-hidden="true"></span>
-            <div id="timer" class="timer-clock" aria-live="off" aria-label="Recording duration">00:00</div>
+            <div id="timer" class="timer-display" aria-live="off">00:00</div>
           </div>
 
-          <!-- Canvas Waveform Visualizer -->
-          <canvas id="waveform-canvas" class="waveform-canvas" width="440" height="56" aria-hidden="true"></canvas>
+          <canvas id="waveform-canvas" class="waveform-canvas" width="440" height="48" aria-hidden="true"></canvas>
 
-          <!-- Status Label -->
-          <span id="recording-status" class="status-label" aria-live="polite">Ready to record</span>
+          <div id="recording-status" class="rec-status" aria-live="polite">Ready to record</div>
 
-          <!-- Recorder Controls -->
-          <div class="button-group" role="group" aria-label="Recording controls">
-            <button id="btn-record" class="btn btn-record" aria-label="Start recording">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <div class="controls" role="group" aria-label="Recording controls">
+            <button id="btn-record" class="btn btn-primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                 <line x1="12" y1="19" x2="12" y2="22"/>
               </svg>
               <span id="btn-record-text">Start Recording</span>
             </button>
-
-            <button id="btn-pause" class="btn btn-outline-rec hidden" aria-label="Pause recording">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <button id="btn-pause" class="btn btn-secondary hidden" aria-label="Pause recording">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
               </svg>
               <span id="btn-pause-text">Pause</span>
             </button>
-
-            <button id="btn-stop" class="btn btn-stop hidden" aria-label="Stop recording">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <button id="btn-stop" class="btn btn-danger hidden" aria-label="Stop recording">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <rect x="3" y="3" width="18" height="18" rx="2"/>
               </svg>
               Stop
@@ -165,132 +145,110 @@
           </div>
         </div>
 
-        <!-- Post-Recording Actions -->
-        <div id="submit-actions" class="submit-wrap hidden">
-          <!-- Playback Preview -->
-          <div class="playback-section">
-            <div class="playback-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <div id="submit-actions" class="post-record hidden">
+          <div class="playback-box">
+            <label class="playback-label" for="audio-playback">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polygon points="5 3 19 12 5 21 5 3"/>
               </svg>
-              Review your recording
-            </div>
-            <audio id="audio-playback" controls class="audio-player" aria-label="Playback of your recorded feedback"></audio>
+              Review your recording before submitting
+            </label>
+            <audio id="audio-playback" controls class="audio-player" aria-label="Playback of recorded feedback"></audio>
           </div>
 
-          <button id="btn-submit" class="btn btn-submit btn-full">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <button id="btn-submit" class="btn btn-success btn-block">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
             Submit Anonymous Feedback
           </button>
-          <button id="btn-discard" class="btn btn-ghost btn-full" aria-label="Discard recording and start over">
-            Discard &amp; Start Over
-          </button>
+          <button id="btn-discard" class="btn btn-ghost btn-block">Discard &amp; Start Over</button>
         </div>
       </section>
 
-      <!-- ══ STEP 3: Processing / Async Polling ══ -->
+      <!-- Step 3: Processing -->
       <section id="step-processing" class="step-panel hidden text-center" aria-labelledby="processing-heading" aria-live="polite">
-        <div class="processing-visual" aria-hidden="true">
-          <div class="proc-ring proc-ring-outer"></div>
-          <div class="proc-ring proc-ring-inner"></div>
-          <div class="proc-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            </svg>
-          </div>
-        </div>
-        <h2 id="processing-heading">Submitting Your Feedback</h2>
-        <p id="processing-status-text" class="section-desc">Uploading audio to secure storage...</p>
+        <div class="spinner" aria-hidden="true"></div>
+        <h2 id="processing-heading">Processing your feedback</h2>
+        <p id="processing-status-text" class="step-desc">Uploading audio to secure storage...</p>
 
-        <div class="proc-steps" aria-label="Processing progress">
-          <div class="proc-step" id="pstep-upload">
-            <div class="pstep-dot active"></div>
+        <div class="progress-steps" aria-label="Processing steps">
+          <div class="progress-step" id="pstep-upload">
+            <div class="ps-dot active"></div>
             <span>Uploading audio</span>
           </div>
-          <div class="proc-step" id="pstep-transcribe">
-            <div class="pstep-dot"></div>
-            <span>Transcribing</span>
+          <div class="progress-step" id="pstep-transcribe">
+            <div class="ps-dot"></div>
+            <span>Transcribing speech</span>
           </div>
-          <div class="proc-step" id="pstep-report">
-            <div class="pstep-dot"></div>
+          <div class="progress-step" id="pstep-report">
+            <div class="ps-dot"></div>
             <span>Generating HR report</span>
           </div>
-          <div class="proc-step" id="pstep-save">
-            <div class="pstep-dot"></div>
+          <div class="progress-step" id="pstep-save">
+            <div class="ps-dot"></div>
             <span>Saving to Drive</span>
           </div>
         </div>
 
-        <p class="proc-note">Long recordings may take a few minutes to transcribe. You can close this tab and come back — your Case ID is saved.</p>
+        <p class="step-note">Longer recordings may take a few minutes to transcribe. Please keep this tab open.</p>
       </section>
 
-      <!-- ══ STEP 4: Confirmation ══ -->
-      <section id="step-confirm" class="step-panel hidden text-center" aria-labelledby="confirm-heading">
-        <div class="success-ring" aria-hidden="true">
-          <div class="success-check">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
+      <!-- Step 4: Confirmation -->
+      <section id="step-confirm" class="step-panel hidden" aria-labelledby="confirm-heading">
+        <div class="confirm-check" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="step-header text-center">
+          <h2 id="confirm-heading">Feedback received</h2>
+          <p>Your anonymous feedback has been securely delivered to HR leadership. Thank you for speaking up.</p>
         </div>
 
-        <h2 id="confirm-heading">Submission Complete</h2>
-        <p class="section-desc">Your anonymous feedback has been delivered securely to HR leadership. Thank you for speaking up.</p>
-
-        <div class="case-card">
-          <span class="case-label">Your Case Reference</span>
+        <div class="case-box">
+          <div class="case-label">Case Reference Number</div>
           <div class="case-row">
-            <code id="display-case-id" aria-label="Case reference number">SSF-20260727-XXXX</code>
-            <button id="btn-copy-case" class="btn-copy" aria-label="Copy case ID to clipboard">Copy</button>
+            <code id="display-case-id" aria-label="Your case ID">SSF-20260727-XXXX</code>
+            <button id="btn-copy-case" class="copy-btn" aria-label="Copy case ID">Copy</button>
           </div>
-          <p class="case-note">Save this ID for your records. HR may reference it when following up.</p>
+          <div class="case-note">Save this ID for your records. HR may reference it if following up.</div>
         </div>
 
-        <div class="confirm-meta" aria-label="Confirmation details">
-          <div class="meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            </svg>
-            <span>PDF report saved to HR Drive</span>
+        <div class="confirm-list" aria-label="What was saved">
+          <div class="confirm-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            PDF report saved to restricted HR Drive
           </div>
-          <div class="meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M3 9h18M9 21V9"/>
-            </svg>
-            <span>Logged in HR compliance sheet</span>
+          <div class="confirm-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Logged in HR compliance spreadsheet
+          </div>
+          <div class="confirm-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Full transcript archived securely
           </div>
         </div>
 
-        <button id="btn-reset" class="btn btn-ghost btn-full">Submit Another Feedback</button>
+        <button id="btn-reset" class="btn btn-secondary btn-block" style="margin-top:8px">Submit Another Feedback</button>
       </section>
 
     </main>
 
-    <!-- Footer -->
     <footer class="portal-footer" role="contentinfo">
-      <p>SpeakSafe HR &bull; ISO/IEC 27001 Compliant Architecture &bull; Employee Welfare Protected</p>
+      SpeakSafe HR &bull; Confidential Employee Feedback System &bull; ISO/IEC 27001 Compliant
     </footer>
 
   </div>
 
-  <!-- Discard Confirmation Modal -->
-  <div id="discard-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
-    <div class="modal-box">
-      <div class="modal-icon" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-          <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-        </svg>
-      </div>
-      <h3 id="modal-heading">Discard Recording?</h3>
-      <p>Your recording will be permanently deleted. This action cannot be undone.</p>
+  <!-- Discard Modal -->
+  <div id="discard-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <h3 id="modal-title">Discard this recording?</h3>
+      <p>Your recording will be permanently deleted. This cannot be undone.</p>
       <div class="modal-actions">
-        <button id="btn-modal-cancel" class="btn btn-outline-modal">Keep Recording</button>
-        <button id="btn-modal-confirm" class="btn btn-danger-modal">Discard</button>
+        <button id="btn-modal-cancel" class="btn btn-secondary">Keep Recording</button>
+        <button id="btn-modal-confirm" class="btn btn-danger">Yes, Discard</button>
       </div>
     </div>
   </div>

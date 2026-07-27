@@ -74,10 +74,10 @@ const waveformCanvas  = document.getElementById('waveform-canvas');
 const waveCtx         = waveformCanvas ? waveformCanvas.getContext('2d') : null;
 
 // Processing step indicators
-const pstepUpload    = document.getElementById('pstep-upload');
+const pstepUpload     = document.getElementById('pstep-upload');
 const pstepTranscribe = document.getElementById('pstep-transcribe');
-const pstepReport    = document.getElementById('pstep-report');
-const pstepSave      = document.getElementById('pstep-save');
+const pstepReport     = document.getElementById('pstep-report');
+const pstepSave       = document.getElementById('pstep-save');
 const processingStatusText = document.getElementById('processing-status-text');
 
 // Discard Modal
@@ -200,6 +200,9 @@ async function startRecording() {
     btnRecord.classList.add('is-recording');
     if (btnRecordText) btnRecordText.textContent = 'Recording...';
     btnRecord.setAttribute('aria-label', 'Stop recording');
+    // Also switch stop button color class
+    btnRecord.classList.remove('btn-primary');
+    btnRecord.classList.add('btn-primary', 'is-recording');
 
     recordingLiveDot.classList.remove('hidden');
     recordingStatus.textContent = 'Recording in progress — speak clearly into your microphone';
@@ -280,7 +283,6 @@ function stopRecording() {
       btnRecord.classList.remove('is-recording');
       if (btnRecordText) btnRecordText.textContent = 'Start Recording';
       btnRecord.setAttribute('aria-label', 'Start recording');
-      recordingLiveDot.classList.add('hidden');
 
       recordingStatus.textContent = 'Recording complete — review your recording below before submitting';
       btnPause.classList.add('hidden');
@@ -722,7 +724,8 @@ function setProcessingStep(activeStep) {
   PROC_ORDER.forEach((step, idx) => {
     const el = PROC_STEPS[step];
     if (!el) return;
-    const dot = el.querySelector('.pstep-dot');
+    // Works with both .pstep-dot (old) and .ps-dot (new HTML)
+    const dot = el.querySelector('.ps-dot') || el.querySelector('.pstep-dot');
     el.classList.remove('is-active', 'is-done');
     if (dot) { dot.classList.remove('active', 'done'); }
 
@@ -749,7 +752,7 @@ function resetRecordingUIControls() {
   if (btnRecordText) btnRecordText.textContent = 'Start Recording';
   btnRecord.setAttribute('aria-label', 'Start recording');
   btnRecord.disabled = false;
-  recordingLiveDot.classList.add('hidden');
+  if (recordingLiveDot) recordingLiveDot.classList.add('hidden');
   btnPause.classList.add('hidden');
   if (btnPauseText) btnPauseText.textContent = 'Pause';
   btnStop.classList.add('hidden');
