@@ -1,7 +1,7 @@
 /**
  * SpeakSafe HR - Google Apps Script Backend Engine (Production Hardened)
  *
- * Robust Error Handling, Zero-Crash Safeguards, and Multilingual Synthesis.
+ * Async AssemblyAI Transcription API + OpenRouter Multilingual HR Report Generator.
  */
 
 const DEFAULT_CONFIG = {
@@ -23,7 +23,7 @@ const HEADERS = [
 const HR_STATUS_OPTIONS = ['New', 'Under Review', 'Employee Contacted', 'Action Required', 'Action Taken', 'Closed'];
 
 /**
- * Run setupSpeakSafe() ONCE.
+ * Setup Script & Drive Folders
  */
 function setupSpeakSafe() {
   try {
@@ -49,7 +49,7 @@ function setupSpeakSafe() {
 }
 
 /**
- * Configure API Keys in Script Properties securely.
+ * Configure Secrets in Script Properties
  */
 function setApiKeys() {
   const assemblyKey = Browser.inputBox('AssemblyAI Key', 'Enter your AssemblyAI API Key:', Browser.Buttons.OK_CANCEL);
@@ -83,13 +83,10 @@ function doPost(event) {
       throw new Error('Malformed JSON payload received by server.');
     }
     
-    // Authenticate payload safely
     authenticate(payload);
 
     let result;
-    if (payload.action === 'get_assembly_token') {
-      result = getAssemblyAiToken();
-    } else if (payload.action === 'process_case') {
+    if (payload.action === 'process_case') {
       result = processCaseSubmission(payload);
     } else if (payload.action === 'sheet_upsert') {
       result = upsertSheetRow(payload);
@@ -113,65 +110,56 @@ function authenticate(payload) {
 }
 
 /**
- * Generate AssemblyAI Real-Time Temporary Token
- */
-function getAssemblyAiToken() {
-  const apiKey = config('ASSEMBLYAI_API_KEY');
-  if (!apiKey) {
-    throw new Error('ASSEMBLYAI_API_KEY is not set in Script Properties. Please run setApiKeys().');
-  }
-
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'authorization': apiKey },
-    payload: JSON.stringify({ expires_in: 3600 }),
-    muteHttpExceptions: true
-  };
-
-  try {
-    const response = UrlFetchApp.fetch('https://api.assemblyai.com/v2/realtime/token', options);
-    const responseCode = response.getResponseCode();
-    const content = JSON.parse(response.getContentText() || '{}');
-
-    if (responseCode !== 200 || !content.token) {
-      throw new Error(`AssemblyAI Error (${responseCode}): ${content.error || response.getContentText()}`);
-    }
-
-    return { token: content.token, expires_in: 3600 };
-  } catch (e) {
-    throw new Error(`AssemblyAI Token Service Error: ${safeError(e)}`);
-  }
-}
-
-/**
- * Complete End-to-End Case Processing with Fail-Safe Fallbacks
+ * Process Case Submission:
+ * 1. Transcribe Audio via AssemblyAI (if audio_base64 provided) or use transcript string.
+ * 2. Generate Neutral HR Summary via OpenRouter (GPT-4o-mini).
+ * 3. Save Transcript .txt file to Drive.
+ * 4. Save PDF Report file to Drive.
+ * 5. Log 23-column row to Google Sheet.
  */
 function processCaseSubmission(payload) {
   const caseId = payload.case_id;
-  const transcript = payload.transcript;
+  let transcript = payload.transcript || '';
+  const audioBase64 = payload.audio_base64 || '';
+  const mimeType = payload.mime_type || 'audio/webm';
+  const durationSec = payload.duration_seconds || 0;
 
   if (!validCaseId(caseId)) throw new Error('Invalid Case ID format. Expected SSF-YYYYMMDD-XXXX.');
-  if (!transcript || typeof transcript !== 'string' || transcript.trim().length < 3) {
-    throw new Error('Feedback content is too short or empty.');
+
+  // 1. If audio base64 provided, transcribe with AssemblyAI API
+  if (audioBase64 && audioBase64.length > 100) {
+    console.log(`Transcribing audio payload for Case ${caseId} (${audioBase64.length} chars base64)...`);
+    try {
+      const transcribedText = transcribeAudioBase64(audioBase64, mimeType);
+      if (transcribedText && transcribedText.trim().length > 2) {
+        transcript = transcribedText;
+      }
+    } catch (sttErr) {
+      console.warn(`AssemblyAI STT failed, using client transcript fallback: ${safeError(sttErr)}`);
+    }
+  }
+
+  if (!transcript || transcript.trim().length < 3) {
+    transcript = 'Employee submitted anonymous audio feedback.';
   }
 
   const cleanTranscript = transcript.trim();
+  const durationStr = durationSec > 0 ? `${durationSec} seconds` : 'Audio Stream';
 
-  // 1. Generate AI Report via OpenRouter (with graceful fallback if AI fails)
+  // 2. Generate AI Report via OpenRouter
   let aiReport;
   try {
     aiReport = generateAiHrReport(cleanTranscript);
   } catch (aiError) {
     console.warn(`AI synthesis failed, applying fail-safe fallback: ${safeError(aiError)}`);
     aiReport = {
-      detected_language: 'Detected from audio',
+      detected_language: 'Auto Detected',
       feedback_category: 'General Workplace Feedback',
       summary: cleanTranscript.slice(0, 300) + '...',
-      key_points: ['- Employee submitted direct feedback'],
+      key_points: ['- Anonymous employee feedback recorded'],
       people_roles: ['Not specified'],
       dates_times: ['Not specified'],
-      workplace_impact: 'Feedback logged for HR review',
+      workplace_impact: 'Logged for HR review',
       support_requested: 'HR attention requested',
       urgency: 'Normal',
       safety_concern: false,
@@ -179,7 +167,7 @@ function processCaseSubmission(payload) {
     };
   }
 
-  // 2. Save Transcript File in Google Drive
+  // 3. Save Transcript File in Google Drive
   let transcriptFile = { link: '' };
   try {
     transcriptFile = saveDriveFile(caseId, 'transcript', cleanTranscript, `${caseId}-transcript.txt`, 'text/plain');
@@ -187,7 +175,7 @@ function processCaseSubmission(payload) {
     console.error('Failed to save transcript in Drive: ' + safeError(driveErr));
   }
 
-  // 3. Generate HTML Report & Convert to PDF File in Drive
+  // 4. Generate HTML Report & Convert to PDF File in Drive
   let pdfFile = { link: '' };
   try {
     const pdfHtml = renderPdfHtml(caseId, aiReport, cleanTranscript);
@@ -196,12 +184,12 @@ function processCaseSubmission(payload) {
     console.error('Failed to save PDF report in Drive: ' + safeError(pdfErr));
   }
 
-  // 4. Update Google Sheet Row
+  // 5. Update Google Sheet Row (23 Columns)
   const nowStr = Utilities.formatDate(new Date(), config('TIME_ZONE') || 'Asia/Kolkata', "yyyy-MM-dd HH:mm 'IST'");
   const sheetRow = {
     'Case ID': caseId,
     'Submitted At': nowStr,
-    'Recording Duration': 'Real-Time Stream',
+    'Recording Duration': durationStr,
     'Feedback Category': aiReport.feedback_category || 'General Workplace Feedback',
     'Professional Summary': aiReport.summary || '',
     'Key Points': Array.isArray(aiReport.key_points) ? aiReport.key_points.join('\n- ') : (aiReport.key_points || ''),
@@ -212,7 +200,7 @@ function processCaseSubmission(payload) {
     'Urgency': aiReport.urgency || 'Normal',
     'Safety Concern': aiReport.safety_concern ? 'YES' : 'No',
     'Information Not Clear': aiReport.information_unclear || 'None',
-    'Audio Recording': 'N/A (Streamed)',
+    'Audio Recording': 'N/A (Processed)',
     'Full Transcript': transcriptFile.link || 'Logged in Sheet',
     'PDF Report': pdfFile.link || 'Logged in Sheet',
     'Processing Status': 'Completed',
@@ -224,6 +212,7 @@ function processCaseSubmission(payload) {
 
   return {
     case_id: caseId,
+    transcript: cleanTranscript,
     transcript_url: transcriptFile.link,
     pdf_url: pdfFile.link,
     sheet_updated: sheetResult.updated,
@@ -232,13 +221,81 @@ function processCaseSubmission(payload) {
 }
 
 /**
- * Call OpenRouter API (GPT-4o-mini) with robust JSON Parsing & Error Handling
+ * Transcribe Audio Base64 using AssemblyAI REST API
+ */
+function transcribeAudioBase64(base64Data, mimeType) {
+  const apiKey = config('ASSEMBLYAI_API_KEY');
+  if (!apiKey) throw new Error('ASSEMBLYAI_API_KEY is not configured in Apps Script properties.');
+
+  // Step A: Upload audio bytes to AssemblyAI
+  const audioBytes = Utilities.base64Decode(base64Data);
+  const audioBlob = Utilities.newBlob(audioBytes, mimeType, 'recording.webm');
+
+  const uploadOptions = {
+    method: 'post',
+    contentType: 'application/octet-stream',
+    headers: { 'authorization': apiKey },
+    payload: audioBlob.getBytes(),
+    muteHttpExceptions: true
+  };
+
+  const uploadResp = UrlFetchApp.fetch('https://api.assemblyai.com/v2/upload', uploadOptions);
+  const uploadJson = JSON.parse(uploadResp.getContentText() || '{}');
+  if (!uploadJson.upload_url) {
+    throw new Error('AssemblyAI upload failed: ' + uploadResp.getContentText());
+  }
+
+  const uploadUrl = uploadJson.upload_url;
+
+  // Step B: Submit transcription job with Multilingual Language Detection
+  const transcriptOptions = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'authorization': apiKey },
+    payload: JSON.stringify({
+      audio_url: uploadUrl,
+      language_detection: true
+    }),
+    muteHttpExceptions: true
+  };
+
+  const transcriptResp = UrlFetchApp.fetch('https://api.assemblyai.com/v2/transcript', transcriptOptions);
+  const transcriptJson = JSON.parse(transcriptResp.getContentText() || '{}');
+  const transcriptId = transcriptJson.id;
+
+  if (!transcriptId) {
+    throw new Error('AssemblyAI transcript request failed: ' + transcriptResp.getContentText());
+  }
+
+  // Step C: Poll for completion (max 45 seconds)
+  const pollUrl = `https://api.assemblyai.com/v2/transcript/${transcriptId}`;
+  const pollOptions = {
+    method: 'get',
+    headers: { 'authorization': apiKey },
+    muteHttpExceptions: true
+  };
+
+  for (let i = 0; i < 15; i++) {
+    Utilities.sleep(3000);
+    const pollResp = UrlFetchApp.fetch(pollUrl, pollOptions);
+    const pollJson = JSON.parse(pollResp.getContentText() || '{}');
+
+    if (pollJson.status === 'completed') {
+      return pollJson.text || '';
+    } else if (pollJson.status === 'error') {
+      throw new Error(`AssemblyAI transcription error: ${pollJson.error}`);
+    }
+  }
+
+  throw new Error('AssemblyAI transcription timed out.');
+}
+
+/**
+ * Call OpenRouter API (GPT-4o-mini) for Multilingual Neutral HR Report
  */
 function generateAiHrReport(transcriptText) {
   const apiKey = config('OPENROUTER_API_KEY');
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not set in Script Properties. Please run setApiKeys().');
-  }
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured in Script Properties.');
 
   const systemPrompt = `You are an expert HR Compliance Specialist fluent in English, Hindi, Marathi, Hinglish, and regional Indian languages.
 Analyze the provided employee feedback transcript (which may be spoken in English, Hindi, Marathi, Hinglish, or mixed languages).
@@ -246,9 +303,9 @@ Translate the core message and generate a clear, objective, neutral 2-3 sentence
 
 Return a JSON object with the following fields:
 {
-  "detected_language": "Detected language name",
+  "detected_language": "Detected language name (e.g. Hindi, Marathi, Hinglish, English)",
   "feedback_category": "Category (e.g. Leave Management, Harassment, Management, Work Culture, Facilities, Compensation)",
-  "summary": "Clear, objective, neutral 2-3 sentence summary in professional English",
+  "summary": "Clear, objective, neutral 2-3 sentence summary in professional English translating the core issue",
   "key_points": ["- Point 1 in English", "- Point 2 in English"],
   "people_roles": ["Role/person mentioned 1"],
   "dates_times": ["Date or timeframe mentioned"],
@@ -291,7 +348,6 @@ Return ONLY raw JSON, no markdown code blocks.`;
   const json = JSON.parse(responseBody);
   const rawContent = json?.choices?.[0]?.message?.content || '{}';
   
-  // Robust JSON Extraction
   try {
     return JSON.parse(rawContent);
   } catch (e) {

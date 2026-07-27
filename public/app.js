@@ -1,5 +1,5 @@
 /**
- * SpeakSafe HR — Production Hardened Client Logic
+ * SpeakSafe HR — Bulletproof Native Audio Recorder & API Submission Logic
  */
 
 // Deployed Google Apps Script Web App URL
@@ -12,13 +12,11 @@ let state = {
   startTime: 0,
   elapsedSeconds: 0,
   timerInterval: null,
-  ws: null,
-  audioContext: null,
-  processor: null,
   micStream: null,
   mediaRecorder: null,
   recordedChunks: [],
-  transcript: '',
+  audioBase64: '',
+  audioMimeType: 'audio/webm',
   caseId: ''
 };
 
@@ -96,27 +94,37 @@ async function startRecording() {
 
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Web Audio API is not supported on this browser or connection context.');
+      throw new Error('Web Audio Recording is not supported on this browser or origin.');
     }
 
-    // Request Microphone Permission
+    // 1. Request Microphone Permission
     state.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    
     state.isRecording = true;
     state.isPaused = false;
+    state.recordedChunks = [];
     
-    // Setup MediaRecorder fallback
-    try {
-      state.mediaRecorder = new MediaRecorder(state.micStream);
-      state.mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) state.recordedChunks.push(e.data);
-      };
-      state.mediaRecorder.start(1000);
-    } catch (mrErr) {
-      console.warn('MediaRecorder fallback init note:', mrErr);
+    // 2. Initialize Native MediaRecorder
+    let options = {};
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      options.mimeType = 'audio/webm;codecs=opus';
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      options.mimeType = 'audio/mp4';
+    } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+      options.mimeType = 'audio/aac';
     }
 
-    // UI Updates for Active Recording
+    state.mediaRecorder = new MediaRecorder(state.micStream, options);
+    state.audioMimeType = state.mediaRecorder.mimeType || 'audio/webm';
+
+    state.mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        state.recordedChunks.push(e.data);
+      }
+    };
+
+    state.mediaRecorder.start(500); // Capture chunks every 500ms
+
+    // 3. Update UI for Active Recording
     btnRecord.classList.add('recording');
     if (btnRecordText) btnRecordText.textContent = 'Recording...';
     
@@ -129,14 +137,11 @@ async function startRecording() {
     btnStop.classList.remove('hidden');
     submitActions.classList.add('hidden');
 
-    // Timer Initialization
+    // 4. Timer Start
     state.startTime = Date.now();
     state.elapsedSeconds = 0;
     timerDisplay.textContent = '00:00';
     state.timerInterval = setInterval(updateTimer, 1000);
-
-    // Initialize Streaming Transcription
-    await initStreamingTranscription();
 
   } catch (err) {
     console.error('Microphone failure:', err);
@@ -145,7 +150,7 @@ async function startRecording() {
     } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
       showError('No Microphone Found', 'No active microphone was detected on your device.');
     } else {
-      showError('Audio Initialization Failed', err.message || 'Could not start audio recorder.');
+      showError('Audio Recording Failed', err.message || 'Could not start microphone audio recorder.');
     }
     resetRecordingUI();
   }
@@ -156,14 +161,18 @@ function togglePause() {
     state.isPaused = false;
     btnPause.textContent = 'Pause';
     recordingStatus.textContent = 'Recording in progress...';
-    if (state.mediaRecorder && state.mediaRecorder.state === 'paused') state.mediaRecorder.resume();
+    if (state.mediaRecorder && state.mediaRecorder.state === 'paused') {
+      state.mediaRecorder.resume();
+    }
     state.startTime = Date.now() - (state.elapsedSeconds * 1000);
     state.timerInterval = setInterval(updateTimer, 1000);
   } else {
     state.isPaused = true;
     btnPause.textContent = 'Resume';
     recordingStatus.textContent = 'Recording Paused';
-    if (state.mediaRecorder && state.mediaRecorder.state === 'recording') state.mediaRecorder.pause();
+    if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+      state.mediaRecorder.pause();
+    }
     clearInterval(state.timerInterval);
   }
 }
@@ -179,10 +188,6 @@ function stopRecording() {
 
   if (state.micStream) {
     state.micStream.getTracks().forEach(track => track.stop());
-  }
-
-  if (state.ws) {
-    try { state.ws.close(); } catch (e) {}
   }
 
   btnRecord.classList.remove('recording');
@@ -206,68 +211,30 @@ function updateTimer() {
   timerDisplay.textContent = `${mins}:${secs}`;
 }
 
-async function initStreamingTranscription() {
-  try {
-    let token = null;
-    if (APPS_SCRIPT_URL) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'get_assembly_token' }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      const data = await resp.json();
-      if (data.ok && data.result?.token) token = data.result.token;
+/**
+ * Convert Recorded Chunks Blob to Base64
+ */
+function getAudioBase64() {
+  return new Promise((resolve, reject) => {
+    if (!state.recordedChunks || state.recordedChunks.length === 0) {
+      return resolve('');
     }
-
-    if (!token) return;
-
-    state.ws = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${token}`);
-
-    state.ws.onmessage = (message) => {
-      const res = JSON.parse(message.data);
-      if (res.message_type === 'FinalTranscript' && res.text) {
-        state.transcript += (state.transcript ? ' ' : '') + res.text;
-      }
+    const audioBlob = new Blob(state.recordedChunks, { type: state.audioMimeType });
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result || '';
+      const base64 = result.split(',')[1] || '';
+      resolve(base64);
     };
-
-    state.ws.onerror = (err) => console.warn('WebSocket stream note:', err);
-
-    state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-    const source = state.audioContext.createMediaStreamSource(state.micStream);
-    state.processor = state.audioContext.createScriptProcessor(4096, 1, 1);
-
-    source.connect(state.processor);
-    state.processor.connect(state.audioContext.destination);
-
-    state.processor.onaudioprocess = (e) => {
-      if (!state.isRecording || state.isPaused || state.ws?.readyState !== WebSocket.OPEN) return;
-      const inputData = e.inputBuffer.getChannelData(0);
-      
-      const pcm16 = new Int16Array(inputData.length);
-      for (let i = 0; i < inputData.length; i++) {
-        const s = Math.max(-1, Math.min(1, inputData[i]));
-        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-      }
-      
-      state.ws.send(pcm16.buffer);
-    };
-
-  } catch (err) {
-    console.warn('Streaming background setup note:', err);
-  }
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(audioBlob);
+  });
 }
 
 async function submitCase() {
-  if (state.isSubmitting) return; // Prevent double submit
+  if (state.isSubmitting) return;
   hideError();
 
-  const finalTranscript = state.transcript.trim() || 'Employee submitted confidential voice feedback.';
-  
   state.isSubmitting = true;
   btnSubmit.disabled = true;
   showStep(stepProcessing);
@@ -275,8 +242,16 @@ async function submitCase() {
   state.caseId = generateCaseId();
 
   try {
+    // 1. Convert Recorded Audio to Base64
+    const audioBase64Data = await getAudioBase64();
+
+    if (!audioBase64Data || audioBase64Data.length < 50) {
+      throw new Error('No audio recorded. Please record your feedback before submitting.');
+    }
+
+    // 2. Submit to Google Apps Script
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 28000);
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for transcription
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -284,7 +259,9 @@ async function submitCase() {
       body: JSON.stringify({
         action: 'process_case',
         case_id: state.caseId,
-        transcript: finalTranscript
+        audio_base64: audioBase64Data,
+        mime_type: state.audioMimeType,
+        duration_seconds: state.elapsedSeconds
       }),
       signal: controller.signal
     });
@@ -301,9 +278,9 @@ async function submitCase() {
     console.error('Submission failure:', err);
     showStep(stepRecord);
     if (err.name === 'AbortError') {
-      showError('Network Timeout', 'The request timed out. Please check your internet connection and try again.');
+      showError('Network Timeout', 'The request timed out while processing transcription. Please try again.');
     } else {
-      showError('Submission Error', err.message || 'Failed to communicate with HR server. Please try again.');
+      showError('Submission Error', err.message || 'Failed to submit feedback. Please check connection and try again.');
     }
   } finally {
     state.isSubmitting = false;
@@ -312,7 +289,7 @@ async function submitCase() {
 }
 
 function resetRecordingState() {
-  state.transcript = '';
+  state.audioBase64 = '';
   state.recordedChunks = [];
   state.elapsedSeconds = 0;
   if (state.timerInterval) clearInterval(state.timerInterval);
