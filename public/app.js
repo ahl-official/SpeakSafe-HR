@@ -5,6 +5,10 @@
 // Deployed Google Apps Script Web App URL
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvrEQdCBlHuzf4x7x9OFUPNvTDJU1hgvTxdPcj146SU626ZglDh6_NVSEhNrYGvT8/exec';
 
+// API Configuration for Direct Mobile/Tablet Uploads
+const ASSEMBLYAI_API_KEY = '3a08a427d01e47d2be23dc1bbc61c703';
+const WEBHOOK_SECRET = '4b7f9e2a1c6d8f03e5a9b4c7d2f6a8e1c3b9d5f0a7e2c8b4f1d6a9e3c5b7f2d8';
+
 let state = {
   isRecording: false,
   isPaused: false,
@@ -243,6 +247,32 @@ function getAudioBase64() {
   });
 }
 
+/**
+ * Upload Audio Blob directly to AssemblyAI CDN from Browser (Mobile & Desktop)
+ */
+async function uploadAudioBlobToAssemblyAI(audioBlob) {
+  const response = await fetch('https://api.assemblyai.com/v2/upload', {
+    method: 'POST',
+    headers: {
+      'authorization': ASSEMBLYAI_API_KEY,
+      'content-type': 'application/octet-stream'
+    },
+    body: audioBlob
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Direct audio upload to AssemblyAI failed (${response.status}): ${errText}`);
+  }
+
+  const json = await response.json();
+  if (!json.upload_url) {
+    throw new Error('AssemblyAI upload failed to return a CDN upload URL.');
+  }
+
+  return json.upload_url;
+}
+
 async function submitCase() {
   if (state.isSubmitting) return;
   hideError();
@@ -258,26 +288,49 @@ async function submitCase() {
   state.caseId = generateCaseId();
 
   try {
-    // Convert Audio Chunks to Base64 string
-    const audioBase64Data = await getAudioBase64();
-
-    if (!audioBase64Data || audioBase64Data.length < 50) {
+    if (!state.recordedChunks || state.recordedChunks.length === 0) {
       throw new Error('No audio captured. Please speak into your microphone and record before submitting.');
     }
 
+    const audioBlob = new Blob(state.recordedChunks, { type: state.audioMimeType });
+    if (audioBlob.size < 300) {
+      throw new Error('Recording is too short or empty. Please speak clearly into your microphone.');
+    }
+
+    console.log(`Uploading ${audioBlob.size} bytes directly from browser to AssemblyAI CDN...`);
+    
+    // 1. Direct Browser Upload to AssemblyAI CDN (bypasses Vercel & Apps Script limits)
+    let uploadUrl = '';
+    try {
+      uploadUrl = await uploadAudioBlobToAssemblyAI(audioBlob);
+      console.log('Direct AssemblyAI upload successful:', uploadUrl);
+    } catch (uploadErr) {
+      console.warn('Direct AssemblyAI upload failed, trying fallback payload:', uploadErr);
+    }
+
+    // 2. Prepare payload for Google Apps Script
+    let payload = {
+      action: 'process_case',
+      case_id: state.caseId,
+      secret: WEBHOOK_SECRET,
+      mime_type: state.audioMimeType,
+      duration_seconds: state.elapsedSeconds
+    };
+
+    if (uploadUrl) {
+      payload.upload_url = uploadUrl;
+    } else {
+      // Legacy fallback if direct upload fails
+      payload.audio_base64 = await getAudioBase64();
+    }
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50s timeout for transcription
+    const timeoutId = setTimeout(() => controller.abort(), 65000); // 65s timeout for Apps Script execution
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'process_case',
-        case_id: state.caseId,
-        audio_base64: audioBase64Data,
-        mime_type: state.audioMimeType,
-        duration_seconds: state.elapsedSeconds
-      }),
+      body: JSON.stringify(payload),
       signal: controller.signal
     });
 

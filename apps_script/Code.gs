@@ -120,14 +120,25 @@ function authenticate(payload) {
 function processCaseSubmission(payload) {
   const caseId = payload.case_id;
   let transcript = payload.transcript || '';
+  const uploadUrl = payload.upload_url || '';
   const audioBase64 = payload.audio_base64 || '';
   const mimeType = payload.mime_type || 'audio/webm';
   const durationSec = payload.duration_seconds || 0;
 
   if (!validCaseId(caseId)) throw new Error('Invalid Case ID format. Expected SSF-YYYYMMDD-XXXX.');
 
-  // 1. If audio base64 provided, transcribe with AssemblyAI API
-  if (audioBase64 && audioBase64.length > 100) {
+  // 1. Transcribe Audio via Direct AssemblyAI CDN URL (Mobile/Tablet) or Base64
+  if (uploadUrl && uploadUrl.startsWith('http')) {
+    console.log(`Transcribing direct AssemblyAI CDN URL for Case ${caseId}...`);
+    try {
+      const transcribedText = transcribeAudioUrl(uploadUrl);
+      if (transcribedText && transcribedText.trim().length > 2) {
+        transcript = transcribedText;
+      }
+    } catch (sttErr) {
+      console.warn(`AssemblyAI URL STT failed: ${safeError(sttErr)}`);
+    }
+  } else if (audioBase64 && audioBase64.length > 100) {
     console.log(`Transcribing audio payload for Case ${caseId} (${audioBase64.length} chars base64)...`);
     try {
       const transcribedText = transcribeAudioBase64(audioBase64, mimeType);
@@ -135,7 +146,7 @@ function processCaseSubmission(payload) {
         transcript = transcribedText;
       }
     } catch (sttErr) {
-      console.warn(`AssemblyAI STT failed, using client transcript fallback: ${safeError(sttErr)}`);
+      console.warn(`AssemblyAI Base64 STT failed: ${safeError(sttErr)}`);
     }
   }
 
@@ -221,7 +232,57 @@ function processCaseSubmission(payload) {
 }
 
 /**
- * Transcribe Audio Base64 using AssemblyAI REST API
+ * Transcribe Audio from pre-uploaded AssemblyAI CDN URL (Direct Mobile Upload)
+ */
+function transcribeAudioUrl(uploadUrl) {
+  const apiKey = config('ASSEMBLYAI_API_KEY');
+  if (!apiKey) throw new Error('ASSEMBLYAI_API_KEY is not configured in Apps Script properties.');
+
+  // Step A: Submit transcription job
+  const transcriptOptions = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'authorization': apiKey },
+    payload: JSON.stringify({
+      audio_url: uploadUrl,
+      language_detection: true
+    }),
+    muteHttpExceptions: true
+  };
+
+  const transcriptResp = UrlFetchApp.fetch('https://api.assemblyai.com/v2/transcript', transcriptOptions);
+  const transcriptJson = JSON.parse(transcriptResp.getContentText() || '{}');
+  const transcriptId = transcriptJson.id;
+
+  if (!transcriptId) {
+    throw new Error('AssemblyAI transcript request failed: ' + transcriptResp.getContentText());
+  }
+
+  // Step B: Poll for completion (optimized 1.5s interval, max 30 seconds)
+  const pollUrl = `https://api.assemblyai.com/v2/transcript/${transcriptId}`;
+  const pollOptions = {
+    method: 'get',
+    headers: { 'authorization': apiKey },
+    muteHttpExceptions: true
+  };
+
+  for (let i = 0; i < 20; i++) {
+    Utilities.sleep(1500);
+    const pollResp = UrlFetchApp.fetch(pollUrl, pollOptions);
+    const pollJson = JSON.parse(pollResp.getContentText() || '{}');
+
+    if (pollJson.status === 'completed') {
+      return pollJson.text || '';
+    } else if (pollJson.status === 'error') {
+      throw new Error(`AssemblyAI transcription error: ${pollJson.error}`);
+    }
+  }
+
+  throw new Error('AssemblyAI transcription timed out.');
+}
+
+/**
+ * Transcribe Audio Base64 using AssemblyAI REST API (Legacy Fallback)
  */
 function transcribeAudioBase64(base64Data, mimeType) {
   const apiKey = config('ASSEMBLYAI_API_KEY');
@@ -245,49 +306,7 @@ function transcribeAudioBase64(base64Data, mimeType) {
     throw new Error('AssemblyAI upload failed: ' + uploadResp.getContentText());
   }
 
-  const uploadUrl = uploadJson.upload_url;
-
-  // Step B: Submit transcription job with Multilingual Language Detection
-  const transcriptOptions = {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'authorization': apiKey },
-    payload: JSON.stringify({
-      audio_url: uploadUrl,
-      language_detection: true
-    }),
-    muteHttpExceptions: true
-  };
-
-  const transcriptResp = UrlFetchApp.fetch('https://api.assemblyai.com/v2/transcript', transcriptOptions);
-  const transcriptJson = JSON.parse(transcriptResp.getContentText() || '{}');
-  const transcriptId = transcriptJson.id;
-
-  if (!transcriptId) {
-    throw new Error('AssemblyAI transcript request failed: ' + transcriptResp.getContentText());
-  }
-
-  // Step C: Poll for completion (max 45 seconds)
-  const pollUrl = `https://api.assemblyai.com/v2/transcript/${transcriptId}`;
-  const pollOptions = {
-    method: 'get',
-    headers: { 'authorization': apiKey },
-    muteHttpExceptions: true
-  };
-
-  for (let i = 0; i < 15; i++) {
-    Utilities.sleep(3000);
-    const pollResp = UrlFetchApp.fetch(pollUrl, pollOptions);
-    const pollJson = JSON.parse(pollResp.getContentText() || '{}');
-
-    if (pollJson.status === 'completed') {
-      return pollJson.text || '';
-    } else if (pollJson.status === 'error') {
-      throw new Error(`AssemblyAI transcription error: ${pollJson.error}`);
-    }
-  }
-
-  throw new Error('AssemblyAI transcription timed out.');
+  return transcribeAudioUrl(uploadJson.upload_url);
 }
 
 /**
