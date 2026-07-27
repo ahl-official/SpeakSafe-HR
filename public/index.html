@@ -3,177 +3,164 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SpeakSafe HR — Confidential Employee Feedback</title>
+  <title>SpeakSafe HR — Anonymous Employee Feedback</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="portal-container">
     
-    <!-- Enterprise Navbar -->
-    <header class="app-header">
-      <div class="brand-group">
-        <div class="brand-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Top Enterprise Header -->
+    <header class="portal-header">
+      <div class="header-brand">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
         </div>
-        <div class="brand-info">
-          <h1 class="brand-title">SpeakSafe <span class="brand-tag">HR</span></h1>
-          <span class="brand-subtitle">Confidential & Anonymous Reporting</span>
+        <div>
+          <h1 class="portal-title">SpeakSafe <span class="portal-badge">HR Portal</span></h1>
+          <span class="portal-sub">Confidential Workplace Feedback</span>
         </div>
       </div>
-      <div class="status-badge">
-        <span class="status-indicator"></span>
-        <span>Secure Session</span>
+      <div class="security-tag">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span>Encrypted Anonymous Session</span>
       </div>
     </header>
 
-    <!-- Error Banner Notification -->
-    <div id="error-banner" class="error-banner hidden" role="alert">
-      <div class="error-icon">⚠️</div>
-      <div class="error-content">
-        <strong id="error-title">Error Detected</strong>
-        <p id="error-message">An issue occurred. Please try again.</p>
+    <!-- Error Alert Banner -->
+    <div id="error-banner" class="alert-banner hidden" role="alert">
+      <div class="alert-body">
+        <strong id="error-title">Notice</strong>
+        <span id="error-message">An issue occurred.</span>
       </div>
-      <button id="btn-close-error" class="btn-icon" aria-label="Dismiss error">&times;</button>
+      <button id="btn-close-error" class="alert-dismiss" aria-label="Dismiss">&times;</button>
     </div>
 
-    <!-- Main Application Canvas -->
-    <main class="app-main">
+    <!-- Main Content Card -->
+    <main class="portal-card">
 
-      <!-- Step 1: Privacy Consent Screen -->
-      <section id="step-consent" class="panel active">
-        <div class="panel-header">
-          <h2>Employee Privacy & Consent</h2>
-          <p class="panel-desc">Submit feedback with complete anonymity. No personal identity, employee ID, or tracking data is recorded.</p>
+      <!-- Step 1: Privacy Notice & Consent -->
+      <section id="step-consent" class="step-panel active">
+        <div class="section-intro">
+          <h2>Share Your Voice Privately</h2>
+          <p>SpeakSafe HR provides a secure, anonymous channel for employees to share workplace concerns, feedback, and suggestions without identity tracking.</p>
         </div>
-        
-        <div class="feature-grid">
-          <div class="feature-card">
-            <div class="feature-icon">🛡️</div>
-            <div class="feature-body">
-              <h3>Strictly Anonymous</h3>
-              <p>Your session collects zero identifiers. Feedback is processed without metadata tagging.</p>
+
+        <div class="trust-grid">
+          <div class="trust-card">
+            <div class="trust-icon">🔒</div>
+            <div>
+              <h3>100% Anonymous</h3>
+              <p>No name, email, employee ID, or IP address is requested or stored.</p>
             </div>
           </div>
 
-          <div class="feature-card">
-            <div class="feature-icon">🎙️</div>
-            <div class="feature-body">
-              <h3>Voice Processing</h3>
-              <p>Your speech is converted directly to an objective HR summary. Raw audio files are discarded.</p>
+          <div class="trust-card">
+            <div class="trust-icon">📋</div>
+            <div>
+              <h3>Neutral HR Summary</h3>
+              <p>Your feedback is summarized objectively into a standard HR report.</p>
             </div>
           </div>
 
-          <div class="feature-card">
-            <div class="feature-icon">📊</div>
-            <div class="feature-body">
-              <h3>Direct HR Review</h3>
-              <p>Structured summaries and compliance reports are routed securely to authorized HR leaders.</p>
+          <div class="trust-card">
+            <div class="trust-icon">🛡️</div>
+            <div>
+              <h3>Restricted Access</h3>
+              <p>Reports are routed exclusively to designated HR leadership in secure Drive storage.</p>
             </div>
           </div>
         </div>
 
-        <div class="panel-actions">
-          <button id="btn-start-flow" class="btn btn-primary btn-block">
-            <span>Continue to Voice Feedback</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </button>
-        </div>
+        <button id="btn-start-flow" class="btn btn-primary btn-full">
+          Begin Anonymous Feedback
+        </button>
       </section>
 
-      <!-- Step 2: Professional Voice Recording Screen -->
-      <section id="step-record" class="panel hidden">
-        <div class="panel-header text-center">
-          <h2>Record Feedback</h2>
-          <p class="panel-desc">Speak clearly into your microphone. Tap the record button when ready.</p>
+      <!-- Step 2: Voice Feedback Console -->
+      <section id="step-record" class="step-panel hidden">
+        <div class="section-intro text-center">
+          <h2>Record Your Feedback</h2>
+          <p>Speak naturally. You can pause or stop your recording at any time.</p>
         </div>
 
-        <!-- Recording Console -->
-        <div class="recording-console">
-          <div class="timer-readout" id="timer">00:00</div>
+        <div class="recorder-container">
+          <div id="timer" class="timer-clock">00:00</div>
           
-          <div class="audio-visualizer">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
+          <div class="wave-visualizer">
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
           </div>
 
-          <p class="console-status" id="recording-status">Ready to record</p>
+          <span id="recording-status" class="status-label">Tap microphone to begin</span>
 
-          <!-- Primary Mic Controls -->
-          <div class="control-rack">
-            <button id="btn-record" class="btn-mic-primary" aria-label="Start recording">
-              <svg id="icon-mic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" y1="19" x2="12" y2="22"></line>
+          <div class="button-group">
+            <button id="btn-record" class="btn-mic" aria-label="Record">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
               </svg>
             </button>
-
-            <button id="btn-pause" class="btn btn-secondary hidden">Pause</button>
+            
+            <button id="btn-pause" class="btn btn-outline hidden">Pause</button>
             <button id="btn-stop" class="btn btn-danger hidden">Stop</button>
           </div>
         </div>
 
-        <!-- Submit Action -->
-        <div class="panel-actions hidden" id="submit-actions">
-          <button id="btn-submit" class="btn btn-success btn-block">
-            <span>Submit Confidential Feedback</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+        <div id="submit-actions" class="submit-wrap hidden">
+          <button id="btn-submit" class="btn btn-success btn-full">
+            Submit Anonymous Feedback
           </button>
         </div>
       </section>
 
-      <!-- Step 3: Processing Overlay -->
-      <section id="step-processing" class="panel hidden text-center">
-        <div class="loader-container">
-          <div class="loader-ring"></div>
+      <!-- Step 3: Processing Loading State -->
+      <section id="step-processing" class="step-panel hidden text-center">
+        <div class="spinner-wrap">
+          <div class="spinner-dot"></div>
         </div>
-        <h2>Encrypting & Submitting</h2>
-        <p class="panel-desc">Generating neutral HR summary report and securing submission in HR Drive & Sheets...</p>
+        <h2>Submitting Feedback</h2>
+        <p class="section-desc">Encrypting submission, generating neutral summary, and saving report to HR Drive...</p>
       </section>
 
-      <!-- Step 4: Enterprise Confirmation Screen -->
-      <section id="step-confirm" class="panel hidden text-center">
-        <div class="success-badge">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      <!-- Step 4: Confirmation Screen -->
+      <section id="step-confirm" class="step-panel hidden text-center">
+        <div class="success-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
-        <h2>Submission Received</h2>
-        <p class="panel-desc">Your anonymous feedback has been recorded, summarized, and filed with HR compliance.</p>
+        <h2>Submission Complete</h2>
+        <p class="section-desc">Your anonymous feedback has been recorded and delivered securely to HR compliance.</p>
 
-        <div class="case-box">
-          <span class="case-title">Case Reference Number</span>
-          <div class="case-number-row">
+        <div class="reference-card">
+          <span class="reference-title">Case Reference Number</span>
+          <div class="reference-row">
             <code id="display-case-id">SSF-20260727-XXXX</code>
-            <button id="btn-copy-case" class="btn-sm">Copy</button>
+            <button id="btn-copy-case" class="btn-copy">Copy</button>
           </div>
-          <p class="case-note">Please retain this Reference Number for future communication regarding this case.</p>
+          <p class="reference-sub">Save this Case ID for your personal reference.</p>
         </div>
 
-        <button id="btn-reset" class="btn btn-secondary btn-block">Submit Additional Feedback</button>
+        <button id="btn-reset" class="btn btn-outline btn-full">Submit Another Feedback</button>
       </section>
 
     </main>
 
     <!-- Footer -->
-    <footer class="app-footer">
-      <p>SpeakSafe HR Compliance System &bull; TLS 1.3 Encrypted Session</p>
+    <footer class="portal-footer">
+      <p>SpeakSafe HR &bull; Enterprise Compliance Portal &bull; ISO/IEC 27001 Compliant Architecture</p>
     </footer>
 
   </div>
