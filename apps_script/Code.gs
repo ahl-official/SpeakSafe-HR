@@ -122,8 +122,8 @@ function doPost(event) {
 
     const action = payload.action || '';
 
-    // AssemblyAI webhook callback — no secret auth (AssemblyAI doesn't send it)
-    if (action === 'assemblyai_webhook') {
+    // AssemblyAI webhook callback (AssemblyAI sends transcript_id in POST body)
+    if (payload.transcript_id || action === 'assemblyai_webhook') {
       return handleAssemblyAiWebhook(payload);
     }
 
@@ -387,10 +387,44 @@ function fetchAssemblyAiTranscript(transcriptId) {
 
 /**
  * Get case status for frontend polling.
+ * Includes direct AssemblyAI status check fallback so long audio cases finalize
+ * immediately when complete, even if the webhook was delayed or missed.
  */
 function getCaseStatus(caseId) {
-  const data = getCaseStatusData(caseId);
+  let data = getCaseStatusData(caseId);
   if (!data) return { ok: false, status: 'not_found', case_id: caseId };
+
+  if (data.status === 'transcribing' && data.transcript_id) {
+    try {
+      const apiKey = config('ASSEMBLYAI_API_KEY');
+      if (apiKey) {
+        const resp = UrlFetchApp.fetch('https://api.assemblyai.com/v2/transcript/' + data.transcript_id, {
+          method: 'get',
+          headers: { 'authorization': apiKey },
+          muteHttpExceptions: true,
+        });
+        const json = JSON.parse(resp.getContentText() || '{}');
+        
+        if (json.status === 'completed') {
+          const transcriptText = json.text || '';
+          const audioFileObj = { link: data.audio_link || '' };
+          const durationStr = (data.duration_seconds > 0) ? formatDuration(data.duration_seconds) : 'Audio Stream';
+          
+          finalizeCase(caseId, transcriptText, data.mime_type || 'audio/webm', data.duration_seconds || 0, audioFileObj, data.submitted_at || '', durationStr);
+          data = { status: 'completed', transcript_id: data.transcript_id };
+          storeCaseStatus(caseId, data);
+          console.log('Case ' + caseId + ' finalized via polling fallback check.');
+        } else if (json.status === 'error') {
+          data = { status: 'error', error: 'AssemblyAI error: ' + (json.error || 'Unknown') };
+          storeCaseStatus(caseId, data);
+          updateSheetStatus(caseId, 'Processing Failed');
+        }
+      }
+    } catch (e) {
+      console.warn('Polling check AssemblyAI fallback error: ' + safeError(e));
+    }
+  }
+
   return { ok: true, status: data.status, case_id: caseId, error: data.error || null };
 }
 
