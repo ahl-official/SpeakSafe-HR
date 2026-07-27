@@ -2,6 +2,7 @@
   "version": 2,
   "name": "speaksafe-hr",
   "cleanUrls": true,
+  "trailingSlash": false,
   "routes": [
     {
       "src": "/(.*)",
