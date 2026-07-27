@@ -63,7 +63,6 @@ const timerDisplay    = document.getElementById('timer');
 const recordingStatus = document.getElementById('recording-status');
 const displayCaseId   = document.getElementById('display-case-id');
 const recordingLiveDot = document.getElementById('recording-live-dot');
-const audioPlayback   = document.getElementById('audio-playback');
 
 const errorBanner     = document.getElementById('error-banner');
 const errorTitle      = document.getElementById('error-title');
@@ -284,16 +283,9 @@ function stopRecording() {
       if (btnRecordText) btnRecordText.textContent = 'Start Recording';
       btnRecord.setAttribute('aria-label', 'Start recording');
 
-      recordingStatus.textContent = 'Recording complete — review your recording below before submitting';
+      recordingStatus.textContent = 'Recording complete — click Submit when ready';
       btnPause.classList.add('hidden');
       btnStop.classList.add('hidden');
-
-      // Set audio playback source
-      if (state.recordedChunks.length > 0 && audioPlayback) {
-        const audioBlob = new Blob(state.recordedChunks, { type: state.audioMimeType });
-        const url = URL.createObjectURL(audioBlob);
-        audioPlayback.src = url;
-      }
 
       submitActions.classList.remove('hidden');
       drawIdleWaveform();
