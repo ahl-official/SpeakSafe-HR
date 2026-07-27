@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "name": "speaksafe-hr",
+  "cleanUrls": true,
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
+}

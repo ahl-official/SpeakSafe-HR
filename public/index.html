@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpeakSafe HR — Anonymous Employee Feedback</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+            <line x1="8" y1="22" x2="16" y2="22"></line>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="brand-title">SpeakSafe <span class="badge-hr">HR</span></span>
+          <span class="brand-subtitle">Encrypted Anonymous Feedback</span>
+        </div>
+      </div>
+      <div class="privacy-tag">
+        <span class="pulse-dot"></span>
+        <span>100% Anonymous</span>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+
+      <!-- Step 1: Privacy Consent Screen -->
+      <section id="step-consent" class="card active">
+        <div class="card-header">
+          <div class="shield-badge">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h2>Your Privacy & Confidentiality</h2>
+          <p class="lead-text">SpeakSafe HR allows you to submit completely anonymous voice feedback. No employee ID, name, or identity is tracked.</p>
+        </div>
+        
+        <div class="privacy-bullets">
+          <div class="bullet-item">
+            <div class="bullet-icon">🔒</div>
+            <div>
+              <strong>No Account Required</strong>
+              <p>No login, email, or credentials needed to share your voice.</p>
+            </div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">🎙️</div>
+            <div>
+              <strong>Text-Only Processing</strong>
+              <p>Speech is converted to text in real-time. Raw audio files are discarded immediately for privacy.</p>
+            </div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">📋</div>
+            <div>
+              <strong>Neutral HR Synthesis</strong>
+              <p>An objective AI summary is sent directly to designated HR leaders in Google Drive & Sheets.</p>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-start-flow" class="btn btn-primary btn-large">
+          <span>Begin Anonymous Recording</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </section>
+
+      <!-- Step 2: Voice Recorder Screen -->
+      <section id="step-record" class="card hidden">
+        <div class="card-header">
+          <h2>Share Your Feedback</h2>
+          <p class="lead-text">Speak naturally into your microphone. Live speech-to-text will transcribe your voice below.</p>
+        </div>
+
+        <!-- Recording Visualizer & Timer -->
+        <div class="recorder-box">
+          <div class="timer-display" id="timer">00:00</div>
+          <div class="waveform-container">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+
+          <div class="recording-status" id="recording-status">
+            Tap mic to start recording
+          </div>
+        </div>
+
+        <!-- Recorder Controls -->
+        <div class="control-group">
+          <button id="btn-record" class="btn btn-mic" aria-label="Record">
+            <svg id="icon-mic" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+            </svg>
+          </button>
+          
+          <button id="btn-pause" class="btn btn-secondary hidden" aria-label="Pause">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+          </button>
+          
+          <button id="btn-stop" class="btn btn-danger hidden" aria-label="Stop & Review">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Live Streaming Transcript Box -->
+        <div class="transcript-section">
+          <div class="transcript-header">
+            <span class="label">Live Transcript</span>
+            <span id="word-count" class="badge-count">0 words</span>
+          </div>
+          <div id="transcript-box" class="transcript-box" contenteditable="true" placeholder="Your transcribed speech will appear here in real-time..."></div>
+        </div>
+
+        <div class="action-footer">
+          <button id="btn-submit" class="btn btn-success btn-large hidden">
+            <span>Submit Feedback</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 3: Processing Loading Screen -->
+      <section id="step-processing" class="card hidden text-center">
+        <div class="spinner-group">
+          <div class="spinner"></div>
+        </div>
+        <h2>Processing HR Report</h2>
+        <p class="lead-text">Generating neutral summary, compiling PDF report, and securing submission to HR Google Drive...</p>
+      </section>
+
+      <!-- Step 4: Confirmation Screen -->
+      <section id="step-confirm" class="card hidden text-center">
+        <div class="success-icon-wrap">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <h2>Feedback Submitted Successfully</h2>
+        <p class="lead-text">Your anonymous feedback has been encrypted, summarized neutrally, and logged into HR Drive & Sheets.</p>
+
+        <div class="case-card">
+          <span class="case-label">Your Unique Case Reference ID</span>
+          <div class="case-id-display">
+            <span id="display-case-id">SSF-20260727-XXXX</span>
+            <button id="btn-copy-case" class="btn-copy" aria-label="Copy Case ID">Copy</button>
+          </div>
+          <p class="case-hint">Save this Case ID if you wish to follow up with HR in the future.</p>
+        </div>
+
+        <button id="btn-reset" class="btn btn-secondary">Submit Another Feedback</button>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>SpeakSafe HR &bull; Confidential Employee Voice System &bull; Secured with TLS 1.3</p>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
