@@ -463,11 +463,6 @@ function doDiscard() {
     stopWaveform();
     cleanupMicStream();
   }
-  // Revoke audio object URL if any
-  if (audioPlayback && audioPlayback.src && audioPlayback.src.startsWith('blob:')) {
-    URL.revokeObjectURL(audioPlayback.src);
-    audioPlayback.src = '';
-  }
   resetRecordingUI();
 }
 
@@ -750,12 +745,6 @@ function resetRecordingUI() {
 
   timerDisplay.textContent = '00:00';
   recordingStatus.textContent = 'Ready to record';
-
-  // Revoke old audio object URL to free memory
-  if (audioPlayback && audioPlayback.src && audioPlayback.src.startsWith('blob:')) {
-    URL.revokeObjectURL(audioPlayback.src);
-    audioPlayback.src = '';
-  }
 
   resetRecordingUIControls();
   drawIdleWaveform();
